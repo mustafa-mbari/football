@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  predictions Prediction[]
+}
+
+model League {
+  id        Int      @id @default(autoincrement())
+  name      String
+  country   String
+  season    String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams   Team[]
+  matches Match[]
+
+  @@unique([name, season])
+}
+
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String
+  logoUrl   String?
+  leagueId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league       League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homeMatches  Match[] @relation("HomeTeam")
+  awayMatches  Match[] @relation("AwayTeam")
+
+  @@unique([name, leagueId])
+}
+
+model Match {
+  id           Int       @id @default(autoincrement())
+  leagueId     Int
+  homeTeamId   Int
+  awayTeamId   Int
+  matchDate    DateTime
+  status       String    @default("scheduled") // scheduled, live, finished, postponed
+  homeScore    Int?
+  awayScore    Int?
+  round        String?
+  venue        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  league      League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homeTeam    Team         @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam    Team         @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  predictions Prediction[]
+}
+
+model Prediction {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  matchId         Int
+  predictedHomeScore Int
+  predictedAwayScore Int
+  points          Int?     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+}
