@@ -1,85 +1,626 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// schema.prisma
+// Football Results Expectations App - Enhanced Version
+// Technologies: Node.js + Express.js + Next.js + PostgreSQL + Prisma
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  predictions Prediction[]
+generator client {
+  provider = "prisma-client-js"
 }
 
-model League {
-  id        Int      @id @default(autoincrement())
-  name      String
-  country   String
-  season    String
-  logoUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ==================== USER MANAGEMENT ====================
+model User {
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  username          String?            @unique
+  passwordHash      String
+  role              Role               @default(USER)
+  isActive          Boolean            @default(true)
+  isEmailVerified   Boolean            @default(false)
+  emailVerifyToken  String?            @unique
+  resetPasswordToken String?           @unique
+  resetPasswordExpiry DateTime?
+  avatar            String?
+  bio               String?            @db.Text
 
-  teams   Team[]
-  matches Match[]
+  // Statistics
+  totalPoints       Int                @default(0)
+  weeklyPoints      Int                @default(0)
+  monthlyPoints     Int                @default(0)
+  seasonPoints      Int                @default(0)
+  predictionAccuracy Float             @default(0)
+  totalPredictions  Int                @default(0)
+  correctPredictions Int               @default(0)
+  currentStreak     Int                @default(0)
+  bestStreak        Int                @default(0)
+  rank              Int?
+
+  // Relations
+  predictions       Prediction[]
+  achievements      UserAchievement[]
+  notifications     Notification[]
+  sessions          Session[]
+  loginHistory      LoginHistory[]
+  favoriteTeams     UserFavoriteTeam[]
+  groups            GroupMember[]
+  ownedGroups       Group[]
+
+  // Timestamps
+  lastLoginAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([email])
+  @@index([totalPoints])
+  @@index([rank])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model LoginHistory {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress   String
+  userAgent   String?
+  loginStatus Boolean
+  failReason  String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ==================== LEAGUE & COMPETITION ====================
+model League {
+  id          Int         @id @default(autoincrement())
+  name        String
+  code        String      @unique
+  country     String?
+  logoUrl     String?
+  season      String
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean     @default(true)
+  priority    Int         @default(0)
+
+  // Relations
+  teams       Team[]
+  matches     Match[]
+  standings   Standing[]
+  gameWeeks   GameWeek[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@unique([name, season])
+  @@index([isActive])
+  @@index([season])
 }
 
+// ==================== TEAMS ====================
 model Team {
+  id           Int                @id @default(autoincrement())
+  name         String
+  shortName    String?
+  code         String             @unique
+  logoUrl      String?
+  stadiumName  String?
+  foundedYear  Int?
+  website      String?
+  primaryColor String?
+
+  // Relations
+  league              League               @relation(fields: [leagueId], references: [id])
+  leagueId            Int
+  homeMatches         Match[]              @relation("HomeTeam")
+  awayMatches         Match[]              @relation("AwayTeam")
+  standings           Standing[]
+  favoredBy           UserFavoriteTeam[]
+  gameWeekStats       TeamGameWeekStats[]
+  standingsSnapshots  StandingsSnapshot[]
+  nextMatchFor        Standing[]           @relation("NextOpponent")
+
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([leagueId])
+  @@index([code])
+}
+
+model UserFavoriteTeam {
   id        Int      @id @default(autoincrement())
-  name      String
-  logoUrl   String?
-  leagueId  Int
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  league       League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  homeMatches  Match[] @relation("HomeTeam")
-  awayMatches  Match[] @relation("AwayTeam")
-
-  @@unique([name, leagueId])
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
 }
 
+// ==================== MATCHES ====================
 model Match {
-  id           Int       @id @default(autoincrement())
-  leagueId     Int
-  homeTeamId   Int
-  awayTeamId   Int
-  matchDate    DateTime
-  status       String    @default("scheduled") // scheduled, live, finished, postponed
-  homeScore    Int?
-  awayScore    Int?
-  round        String?
-  venue        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               Int          @id @default(autoincrement())
+  externalId       String?      @unique
+  league           League       @relation(fields: [leagueId], references: [id])
+  leagueId         Int
+  homeTeam         Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  homeTeamId       Int
+  awayTeam         Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  awayTeamId       Int
 
-  league      League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  homeTeam    Team         @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  awayTeam    Team         @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
-  predictions Prediction[]
+  // Match details
+  matchDate           DateTime
+  weekNumber          Int?
+  originalWeekNumber  Int?        // Original week before postponement
+  isPostponed         Boolean     @default(false)
+  round               String?
+  venue               String?
+  referee             String?
+  attendance          Int?
+
+  // Scores
+  homeScore        Int?
+  awayScore        Int?
+  homeHalfTimeScore Int?
+  awayHalfTimeScore Int?
+  homeExtraTimeScore Int?
+  awayExtraTimeScore Int?
+  homePenaltyScore Int?
+  awayPenaltyScore Int?
+
+  // Status
+  status           MatchStatus  @default(SCHEDULED)
+  minute           Int?
+  isPredictionLocked Boolean    @default(false)
+
+  // Relations
+  predictions      Prediction[]
+  events           MatchEvent[]
+  gameWeekMatches  GameWeekMatch[]
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([leagueId])
+  @@index([matchDate])
+  @@index([status])
+  @@index([weekNumber])
+  @@unique([homeTeamId, awayTeamId, matchDate])
 }
 
+model MatchEvent {
+  id         Int            @id @default(autoincrement())
+  matchId    Int
+  match      Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  type       MatchEventType
+  minute     Int
+  playerName String?
+  teamSide   String?        // "HOME" | "AWAY"
+  details    Json?
+  createdAt  DateTime       @default(now())
+
+  @@index([matchId])
+}
+
+// ==================== PREDICTIONS ====================
 model Prediction {
-  id              Int      @id @default(autoincrement())
-  userId          Int
-  matchId         Int
+  id                Int      @id @default(autoincrement())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            Int
+  match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId           Int
+
+  // Predictions
   predictedHomeScore Int
   predictedAwayScore Int
-  points          Int?     @default(0)
+  predictedResult    Result?  // Calculated: WIN_HOME, WIN_AWAY, DRAW
+  confidence         Int?     @default(50) // 0-100
+
+  // Points
+  resultPoints       Int      @default(0) // Points for correct result
+  scorePoints        Int      @default(0) // Points for exact score
+  bonusPoints        Int      @default(0) // Any bonus points
+  totalPoints        Int      @default(0) // Total points earned
+
+  // Flags
+  isProcessed        Boolean  @default(false)
+  isLate             Boolean  @default(false)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, matchId])
+  @@index([userId])
+  @@index([matchId])
+  @@index([isProcessed])
+}
+
+// ==================== STANDINGS ====================
+model Standing {
+  id                  Int      @id @default(autoincrement())
+  league              League   @relation(fields: [leagueId], references: [id])
+  leagueId            Int
+  team                Team     @relation(fields: [teamId], references: [id])
+  teamId              Int
+
+  position            Int
+  played              Int      @default(0)
+  won                 Int      @default(0)
+  drawn               Int      @default(0)
+  lost                Int      @default(0)
+  goalsFor            Int      @default(0)
+  goalsAgainst        Int      @default(0)
+  goalDifference      Int      @default(0)
+  points              Int      @default(0)
+  form                String?  // Last 5 matches: "WWDLW"
+  nextOpponentId      Int?     // Next match opponent
+  nextOpponent        Team?    @relation("NextOpponent", fields: [nextOpponentId], references: [id])
+  lastUpdatedGameWeek Int?     // Last gameweek this was updated
+
+  updatedAt           DateTime @updatedAt
+
+  @@unique([leagueId, teamId])
+  @@index([leagueId, position])
+}
+
+// ==================== GAMEWEEKS & WEEKLY TRACKING ====================
+model GameWeek {
+  id              Int                    @id @default(autoincrement())
+  league          League                 @relation(fields: [leagueId], references: [id])
+  leagueId        Int
+  weekNumber      Int                    // 1-38 for Premier League, 1-34 for Bundesliga
+  startDate       DateTime
+  endDate         DateTime
+  status          GameWeekStatus         @default(SCHEDULED)
+  isCurrent       Boolean                @default(false)
+
+  // Relations
+  matches         GameWeekMatch[]
+  teamStats       TeamGameWeekStats[]
+  snapshots       StandingsSnapshot[]
+
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@unique([leagueId, weekNumber])
+  @@index([leagueId, weekNumber])
+  @@index([isCurrent])
+}
+
+model GameWeekMatch {
+  id          Int      @id @default(autoincrement())
+  gameWeek    GameWeek @relation(fields: [gameWeekId], references: [id], onDelete: Cascade)
+  gameWeekId  Int
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId     Int
+
+  createdAt   DateTime @default(now())
+
+  @@unique([gameWeekId, matchId])
+  @@index([gameWeekId])
+  @@index([matchId])
+}
+
+model TeamGameWeekStats {
+  id              Int      @id @default(autoincrement())
+  gameWeek        GameWeek @relation(fields: [gameWeekId], references: [id], onDelete: Cascade)
+  gameWeekId      Int
+  team            Team     @relation(fields: [teamId], references: [id])
+  teamId          Int
+
+  // Performance in this specific gameweek
+  matchesPlayed   Int      @default(0)  // Can be 0, 1, or 2+ due to postponements
+  won             Int      @default(0)
+  drawn           Int      @default(0)
+  lost            Int      @default(0)
+  goalsFor        Int      @default(0)
+  goalsAgainst    Int      @default(0)
+  goalDifference  Int      @default(0)
+  points          Int      @default(0)
+  result          String?  // "W", "D", "L", "WW" (if 2 matches), or null if no match
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  @@unique([gameWeekId, teamId])
+  @@index([gameWeekId])
+  @@index([teamId])
+}
 
-  @@unique([userId, matchId])
+model StandingsSnapshot {
+  id              Int      @id @default(autoincrement())
+  gameWeek        GameWeek @relation(fields: [gameWeekId], references: [id], onDelete: Cascade)
+  gameWeekId      Int
+  team            Team     @relation(fields: [teamId], references: [id])
+  teamId          Int
+
+  // Cumulative standings after this gameweek
+  position        Int
+  played          Int      @default(0)
+  won             Int      @default(0)
+  drawn           Int      @default(0)
+  lost            Int      @default(0)
+  goalsFor        Int      @default(0)
+  goalsAgainst    Int      @default(0)
+  goalDifference  Int      @default(0)
+  points          Int      @default(0)
+  form            String?  // Last 5 matches: "WWDLW"
+
+  createdAt       DateTime @default(now())
+
+  @@unique([gameWeekId, teamId])
+  @@index([gameWeekId, position])
+  @@index([teamId])
+}
+
+// ==================== GROUPS & COMPETITIONS ====================
+model Group {
+  id              Int           @id @default(autoincrement())
+  name            String
+  description     String?       @db.Text
+  code            String        @unique @default(cuid())
+  isPrivate       Boolean       @default(false)
+  joinCode        String?       @unique
+  maxMembers      Int           @default(50)
+  owner           User          @relation(fields: [ownerId], references: [id])
+  ownerId         Int
+  logoUrl         String?
+
+  // Relations
+  members         GroupMember[]
+  leaderboard     GroupLeaderboard[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([code])
+  @@index([joinCode])
+}
+
+model GroupMember {
+  id          Int      @id @default(autoincrement())
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId     Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  role        GroupRole @default(MEMBER)
+  joinedAt    DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model GroupLeaderboard {
+  id          Int      @id @default(autoincrement())
+  groupId     Int
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId      Int
+  weekNumber  Int?
+  monthNumber Int?
+  season      String?
+  points      Int      @default(0)
+  rank        Int
+  updatedAt   DateTime @updatedAt
+
+  @@index([groupId, weekNumber])
+  @@index([groupId, monthNumber])
+  @@index([groupId, season])
+}
+
+// ==================== GAMIFICATION ====================
+model Achievement {
+  id              Int               @id @default(autoincrement())
+  name            String
+  description     String            @db.Text
+  iconUrl         String?
+  category        AchievementCategory
+  requiredValue   Int?
+  points          Int               @default(0)
+  isActive        Boolean           @default(true)
+
+  // Relations
+  userAchievements UserAchievement[]
+
+  createdAt       DateTime          @default(now())
+}
+
+model UserAchievement {
+  id            Int         @id @default(autoincrement())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievementId Int
+  unlockedAt    DateTime    @default(now())
+  progress      Int         @default(0)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+}
+
+model Badge {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  imageUrl    String
+  tier        BadgeTier
+  requirement Json
+  createdAt   DateTime @default(now())
+}
+
+// ==================== NOTIFICATIONS ====================
+model Notification {
+  id         Int              @id @default(autoincrement())
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  type       NotificationType
+  title      String
+  message    String           @db.Text
+  data       Json?
+  isRead     Boolean          @default(false)
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// ==================== POINTS & RULES ====================
+model PointsRule {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String     @db.Text
+  points      Int
+  type        PointsType
+  condition   Json?      // Additional conditions
+  priority    Int        @default(0)
+  isActive    Boolean    @default(true)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([isActive])
+}
+
+// ==================== AUDIT & ANALYTICS ====================
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  action     String
+  entity     String
+  entityId   Int?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Analytics {
+  id                  Int      @id @default(autoincrement())
+  date                DateTime @db.Date
+  totalUsers          Int      @default(0)
+  activeUsers         Int      @default(0)
+  newUsers            Int      @default(0)
+  totalPredictions    Int      @default(0)
+  avgPredictionsPerUser Float  @default(0)
+  mostPredictedMatch  Int?
+  createdAt           DateTime @default(now())
+
+  @@unique([date])
+  @@index([date])
+}
+
+// ==================== ENUMS ====================
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  USER
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  HALF_TIME
+  FINISHED
+  POSTPONED
+  CANCELED
+  ABANDONED
+}
+
+enum Result {
+  WIN_HOME
+  WIN_AWAY
+  DRAW
+}
+
+enum MatchEventType {
+  GOAL
+  OWN_GOAL
+  PENALTY
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+  VAR
+  INJURY
+}
+
+enum PointsType {
+  EXACT_SCORE           // Full points for exact score
+  CORRECT_RESULT        // Points for correct outcome
+  GOAL_DIFFERENCE       // Points for correct goal difference
+  ONE_TEAM_SCORE        // Points for getting one team's score right
+  TOTAL_GOALS           // Points for correct total goals
+  BOTH_TEAMS_SCORE      // Bonus for both teams scoring prediction
+  CLEAN_SHEET           // Bonus for predicting clean sheet
+  HIGH_SCORING          // Bonus for high-scoring match (3+ goals)
+  UNDERDOG_WIN          // Bonus for predicting underdog victory
+  WEEKLY_STREAK         // Bonus for consecutive correct predictions
+  PERFECT_WEEK          // All predictions correct in a week
+}
+
+enum NotificationType {
+  MATCH_REMINDER
+  PREDICTION_DEADLINE
+  MATCH_RESULT
+  POINTS_EARNED
+  ACHIEVEMENT_UNLOCKED
+  GROUP_INVITATION
+  LEADERBOARD_UPDATE
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum AchievementCategory {
+  PREDICTIONS
+  ACCURACY
+  STREAKS
+  POINTS
+  SOCIAL
+  SPECIAL
+}
+
+enum BadgeTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum GameWeekStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  POSTPONED
 }

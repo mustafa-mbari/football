@@ -77,7 +77,7 @@ export const getMatchesByWeek = async (req: Request, res: Response) => {
             id: true,
             predictedHomeScore: true,
             predictedAwayScore: true,
-            points: true,
+            totalPoints: true,
             userId: true
           }
         } : false

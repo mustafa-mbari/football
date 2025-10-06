@@ -172,7 +172,7 @@ export const updateMatchScore = async (req: Request, res: Response) => {
 
       await prisma.prediction.update({
         where: { id: prediction.id },
-        data: { points }
+        data: { totalPoints: points }
       });
     }
 

@@ -66,3 +66,9 @@ export const weeksApi = {
   getMatchesByWeek: (leagueId: number, week: number) =>
     api.get('/weeks/matches', { params: { leagueId, week } })
 };
+
+// Standings API
+export const standingsApi = {
+  getAll: () => api.get('/standings'),
+  getByLeague: (leagueId: number) => api.get(`/standings/league/${leagueId}`)
+};

@@ -46,9 +46,17 @@ export default function Home() {
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">⚽ Football Predictions</h1>
             <div className="flex gap-4">
+              <Link href="/standings">
+                <Button variant="ghost">Standings</Button>
+              </Link>
               <Link href="/leaderboard">
                 <Button variant="ghost">Leaderboard</Button>
               </Link>
+              {user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') && (
+                <Link href="/admin">
+                  <Button variant="outline">Admin</Button>
+                </Link>
+              )}
               {user ? (
                 <Link href="/profile">
                   <Button variant="default">{user.username}</Button>

@@ -35,7 +35,8 @@ export const register = async (req: Request, res: Response) => {
       data: {
         email,
         username,
-        password: hashedPassword
+        name: username,
+        passwordHash: hashedPassword
       },
       select: {
         id: true,
@@ -81,7 +82,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -101,7 +102,8 @@ export const login = async (req: Request, res: Response) => {
       data: {
         id: user.id,
         email: user.email,
-        username: user.username
+        username: user.username,
+        role: user.role
       }
     });
   } catch (error: any) {
@@ -130,6 +132,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         id: true,
         email: true,
         username: true,
+        role: true,
         createdAt: true
       }
     });

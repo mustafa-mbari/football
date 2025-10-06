@@ -54,3 +54,19 @@ page-old.tsx
 
 # Claude
 .claude/settings.local.json
+
+# Images and Icons
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.bmp
+*.tiff
+frontend/public/logos/
+backend/public/images/
+public/images/
+public/logos/
+public/icons/

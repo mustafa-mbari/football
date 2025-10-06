@@ -17,7 +17,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
             }
           } : undefined,
           select: {
-            points: true
+            totalPoints: true
           }
         }
       }
@@ -28,7 +28,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
       .map(user => ({
         id: user.id,
         username: user.username,
-        totalPoints: user.predictions.reduce((sum, pred) => sum + (pred.points || 0), 0),
+        totalPoints: user.predictions.reduce((sum, pred) => sum + (pred.totalPoints || 0), 0),
         totalPredictions: user.predictions.length
       }))
       .filter(user => user.totalPredictions > 0) // Only show users who have made predictions
@@ -57,7 +57,9 @@ export const getUserStats = async (req: Request, res: Response) => {
     const predictions = await prisma.prediction.findMany({
       where: { userId },
       select: {
-        points: true,
+        totalPoints: true,
+        scorePoints: true,
+        resultPoints: true,
         match: {
           select: {
             status: true
@@ -67,10 +69,10 @@ export const getUserStats = async (req: Request, res: Response) => {
     });
 
     const totalPredictions = predictions.length;
-    const finishedPredictions = predictions.filter(p => p.match.status === 'finished');
-    const totalPoints = predictions.reduce((sum, p) => sum + (p.points || 0), 0);
-    const exactScores = predictions.filter(p => p.points === 3).length;
-    const correctOutcomes = predictions.filter(p => p.points === 1).length;
+    const finishedPredictions = predictions.filter(p => p.match.status === 'FINISHED');
+    const totalPoints = predictions.reduce((sum, p) => sum + (p.totalPoints || 0), 0);
+    const exactScores = predictions.filter(p => p.scorePoints > 0).length;
+    const correctOutcomes = predictions.filter(p => p.resultPoints > 0).length;
 
     res.json({
       success: true,

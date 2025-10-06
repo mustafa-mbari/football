@@ -1,0 +1,223 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+
+interface League {
+  id: number;
+  name: string;
+  country: string;
+  season: string;
+}
+
+interface GameWeek {
+  id: number;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  isCurrent: boolean;
+  league: League;
+  _count: {
+    matches: number;
+    teamStats: number;
+  };
+}
+
+export default function GameWeeksPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [gameWeeks, setGameWeeks] = useState<GameWeek[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLeague, setSelectedLeague] = useState<string>('');
+  const [leagues, setLeagues] = useState<League[]>([]);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
+      router.push('/');
+      return;
+    }
+
+    fetchGameWeeks();
+  }, [user, router]);
+
+  const fetchGameWeeks = async () => {
+    try {
+      const response = await fetch('http://localhost:7070/api/gameweeks');
+      if (response.ok) {
+        const data = await response.json();
+        setGameWeeks(data.data);
+
+        // Extract unique leagues
+        const uniqueLeagues = Array.from(
+          new Map(data.data.map((gw: GameWeek) => [gw.league.id, gw.league])).values()
+        ) as League[];
+        setLeagues(uniqueLeagues);
+
+        if (uniqueLeagues.length > 0) {
+          setSelectedLeague(uniqueLeagues[0].id.toString());
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching gameweeks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getLeagueFlag = (country: string): string => {
+    const flags: { [key: string]: string } = {
+      England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+      Germany: '🇩🇪',
+      Spain: '🇪🇸',
+    };
+    return flags[country] || '⚽';
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      SCHEDULED: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      IN_PROGRESS: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      COMPLETED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      POSTPONED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    };
+
+    return (
+      <span className={`px-2 py-1 rounded text-xs font-medium ${styles[status as keyof typeof styles] || styles.SCHEDULED}`}>
+        {status}
+      </span>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/admin">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white cursor-pointer">⚽ GameWeeks Management</h1>
+            </Link>
+            <div className="flex gap-4">
+              <Link href="/admin">
+                <Button variant="ghost">← Back to Dashboard</Button>
+              </Link>
+              <Link href="/profile">
+                <Button variant="outline">{user.username}</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
+            GameWeeks Management
+          </h2>
+          <p className="text-lg text-slate-600 dark:text-slate-300">
+            Manage gameweeks, assign matches, and update team statistics
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="text-center text-slate-600 dark:text-slate-400">Loading gameweeks...</div>
+        ) : (
+          <Tabs value={selectedLeague} onValueChange={setSelectedLeague} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              {leagues.map((league) => (
+                <TabsTrigger key={league.id} value={league.id.toString()}>
+                  <span className="mr-2">{getLeagueFlag(league.country)}</span>
+                  {league.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {leagues.map((league) => (
+              <TabsContent key={league.id} value={league.id.toString()}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{league.name} - {league.season}</span>
+                      <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
+                        {gameWeeks.filter(gw => gw.league.id === league.id).length} gameweeks
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b-2 border-slate-200 dark:border-slate-700">
+                          <tr className="text-left">
+                            <th className="py-3 px-4 font-semibold">Week</th>
+                            <th className="py-3 px-4 font-semibold">Start Date</th>
+                            <th className="py-3 px-4 font-semibold">End Date</th>
+                            <th className="py-3 px-4 font-semibold">Status</th>
+                            <th className="py-3 px-4 text-center font-semibold">Matches</th>
+                            <th className="py-3 px-4 text-center font-semibold">Team Stats</th>
+                            <th className="py-3 px-4 text-center font-semibold">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gameWeeks
+                            .filter(gw => gw.league.id === league.id)
+                            .map((gameWeek) => (
+                              <tr
+                                key={gameWeek.id}
+                                className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
+                                  gameWeek.isCurrent ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                }`}
+                              >
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold">Week {gameWeek.weekNumber}</span>
+                                    {gameWeek.isCurrent && (
+                                      <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">CURRENT</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">{formatDate(gameWeek.startDate)}</td>
+                                <td className="py-3 px-4">{formatDate(gameWeek.endDate)}</td>
+                                <td className="py-3 px-4">{getStatusBadge(gameWeek.status)}</td>
+                                <td className="py-3 px-4 text-center">{gameWeek._count.matches}</td>
+                                <td className="py-3 px-4 text-center">{gameWeek._count.teamStats}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => router.push(`/admin/gameweeks/${gameWeek.id}`)}
+                                  >
+                                    Manage
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
+      </main>
+    </div>
+  );
+}

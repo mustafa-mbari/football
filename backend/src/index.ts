@@ -11,6 +11,8 @@ import matchRoutes from './routes/matchRoutes';
 import predictionRoutes from './routes/predictionRoutes';
 import leaderboardRoutes from './routes/leaderboardRoutes';
 import weekRoutes from './routes/weekRoutes';
+import standingRoutes from './routes/standingRoutes';
+import gameWeekRoutes from './routes/gameWeekRoutes';
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/weeks', weekRoutes);
+app.use('/api/standings', standingRoutes);
+app.use('/api/gameweeks', gameWeekRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
