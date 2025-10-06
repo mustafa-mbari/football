@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { leaguesApi, predictionsApi, authApi, weeksApi } from '@/lib/api';
+import { leaguesApi, predictionsApi, weeksApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface Team {
   id: number;
@@ -47,29 +48,27 @@ interface WeekOption {
   count: number;
 }
 
-export default function LeaguePage() {
+function LeagueContent() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [league, setLeague] = useState<League | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [availableWeeks, setAvailableWeeks] = useState<WeekOption[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [predictions, setPredictions] = useState<{ [key: number]: { home: string; away: string } }>({});
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [leagueResponse, weeksResponse, userResponse] = await Promise.all([
+        const [leagueResponse, weeksResponse] = await Promise.all([
           leaguesApi.getById(parseInt(params.id as string)),
-          weeksApi.getAvailableWeeks(parseInt(params.id as string)),
-          authApi.getCurrentUser().catch(() => null)
+          weeksApi.getAvailableWeeks(parseInt(params.id as string))
         ]);
 
         setLeague(leagueResponse.data.data);
         setAvailableWeeks(weeksResponse.data.data);
-        setUser(userResponse?.data?.data);
 
         // Set default week (first available week or week 1)
         const defaultWeek = weeksResponse.data.data[0]?.week || 1;
@@ -154,30 +153,6 @@ export default function LeaguePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white cursor-pointer">⚽ Football Predictions</h1>
-            </Link>
-            <div className="flex gap-4">
-              <Link href="/leaderboard">
-                <Button variant="ghost">Leaderboard</Button>
-              </Link>
-              {user ? (
-                <Link href="/profile">
-                  <Button variant="default">{user.username}</Button>
-                </Link>
-              ) : (
-                <Link href="/login">
-                  <Button variant="default">Login</Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -318,5 +293,13 @@ export default function LeaguePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LeaguePage() {
+  return (
+    <ProtectedRoute>
+      <LeagueContent />
+    </ProtectedRoute>
   );
 }

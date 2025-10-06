@@ -3,15 +3,18 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import LandingPage from './landing/page';
 
-export default function Home() {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard');
+    if (!loading && !user) {
+      router.push('/');
     }
   }, [user, loading, router]);
 
@@ -26,7 +29,9 @@ export default function Home() {
     );
   }
 
-  // If user is logged in, they'll be redirected to dashboard
-  // Otherwise, show the landing page
-  return <LandingPage />;
+  if (!user) {
+    return null;
+  }
+
+  return <>{children}</>;
 }

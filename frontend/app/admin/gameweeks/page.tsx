@@ -108,23 +108,33 @@ export default function GameWeeksPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+      {/* Admin Submenu */}
+      <div className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex gap-2 py-2 overflow-x-auto">
             <Link href="/admin">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white cursor-pointer">⚽ GameWeeks Management</h1>
+              <Button variant="ghost" size="sm">
+                🏠 Dashboard
+              </Button>
             </Link>
-            <div className="flex gap-4">
-              <Link href="/admin">
-                <Button variant="ghost">← Back to Dashboard</Button>
-              </Link>
-              <Link href="/profile">
-                <Button variant="outline">{user.username}</Button>
-              </Link>
-            </div>
+            <Link href="/admin/gameweeks">
+              <Button variant="default" size="sm">
+                📅 Manage GameWeeks
+              </Button>
+            </Link>
+            <Link href="/admin/matches">
+              <Button variant="ghost" size="sm">
+                ⚽ Manage Matches
+              </Button>
+            </Link>
+            <Link href="/admin/standings">
+              <Button variant="ghost" size="sm">
+                📊 Update Standings
+              </Button>
+            </Link>
           </div>
         </div>
-      </nav>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">

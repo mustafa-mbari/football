@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { standingsApi } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface Team {
   id: number;
@@ -46,8 +44,7 @@ interface LeagueStanding {
   standings: Standing[];
 }
 
-export default function StandingsPage() {
-  const { user } = useAuth();
+function TablesContent() {
   const [standingsData, setStandingsData] = useState<LeagueStanding[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
@@ -97,40 +94,10 @@ export default function StandingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white cursor-pointer">⚽ Football Predictions</h1>
-            </Link>
-            <div className="flex gap-4">
-              <Link href="/">
-                <Button variant="ghost">Home</Button>
-              </Link>
-              <Link href="/leaderboard">
-                <Button variant="ghost">Leaderboard</Button>
-              </Link>
-              <Link href="/standings">
-                <Button variant="default">Standings</Button>
-              </Link>
-              {user ? (
-                <Link href="/profile">
-                  <Button variant="outline">{user.username}</Button>
-                </Link>
-              ) : (
-                <Link href="/login">
-                  <Button variant="outline">Login</Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            League Standings
+            League Tables
           </h2>
           <p className="text-lg text-slate-600 dark:text-slate-300">
             View current standings for all leagues
@@ -261,5 +228,13 @@ export default function StandingsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function TablesPage() {
+  return (
+    <ProtectedRoute>
+      <TablesContent />
+    </ProtectedRoute>
   );
 }
