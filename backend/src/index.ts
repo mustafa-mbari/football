@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/errorHandler';
 // Import routes
 import authRoutes from './routes/authRoutes';
 import leagueRoutes from './routes/leagueRoutes';
+import teamRoutes from './routes/teamRoutes';
 import matchRoutes from './routes/matchRoutes';
 import predictionRoutes from './routes/predictionRoutes';
 import leaderboardRoutes from './routes/leaderboardRoutes';
@@ -31,6 +32,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/leagues', leagueRoutes);
+app.use('/api/teams', teamRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);

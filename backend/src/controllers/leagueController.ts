@@ -61,3 +61,24 @@ export const getLeagueById = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getTeamsByLeague = async (req: Request, res: Response) => {
+  try {
+    const { leagueId } = req.params;
+
+    const teams = await prisma.team.findMany({
+      where: { leagueId: parseInt(leagueId) },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json({
+      success: true,
+      data: teams
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
