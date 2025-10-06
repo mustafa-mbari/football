@@ -1,0 +1,56 @@
+{
+  "groups": [
+    {
+      "name": "Premier League Fans",
+      "description": "For all Premier League enthusiasts",
+      "ownerIndex": 0,
+      "isPrivate": false,
+      "logoUrl": "https://ui-avatars.com/api/?name=PL+Fans&background=3D195B&color=fff"
+    },
+    {
+      "name": "La Liga Experts",
+      "description": "Spanish football predictions group",
+      "ownerIndex": 1,
+      "isPrivate": false,
+      "logoUrl": "https://ui-avatars.com/api/?name=La+Liga&background=FF6B00&color=fff"
+    },
+    {
+      "name": "Top Predictors",
+      "description": "Elite prediction masters only",
+      "ownerIndex": 0,
+      "isPrivate": true,
+      "joinCode": "ELITE2025",
+      "logoUrl": "https://ui-avatars.com/api/?name=Top+Predictors&background=FFD700&color=000"
+    },
+    {
+      "name": "Bundesliga Watchers",
+      "description": "German football prediction group",
+      "ownerIndex": 3,
+      "isPrivate": false,
+      "logoUrl": "https://ui-avatars.com/api/?name=Bundesliga&background=D3010C&color=fff"
+    },
+    {
+      "name": "Weekend Warriors",
+      "description": "Casual weekend match predictions",
+      "ownerIndex": 2,
+      "isPrivate": false,
+      "logoUrl": "https://ui-avatars.com/api/?name=Weekend+Warriors&background=28A745&color=fff"
+    }
+  ],
+  "groupMembers": [
+    { "groupIndex": 0, "userIndex": 0, "role": "OWNER" },
+    { "groupIndex": 0, "userIndex": 1, "role": "MEMBER" },
+    { "groupIndex": 0, "userIndex": 2, "role": "ADMIN" },
+    { "groupIndex": 0, "userIndex": 4, "role": "MEMBER" },
+    { "groupIndex": 1, "userIndex": 1, "role": "OWNER" },
+    { "groupIndex": 1, "userIndex": 0, "role": "MEMBER" },
+    { "groupIndex": 1, "userIndex": 3, "role": "MEMBER" },
+    { "groupIndex": 2, "userIndex": 0, "role": "OWNER" },
+    { "groupIndex": 2, "userIndex": 1, "role": "MEMBER" },
+    { "groupIndex": 2, "userIndex": 2, "role": "MEMBER" },
+    { "groupIndex": 3, "userIndex": 3, "role": "OWNER" },
+    { "groupIndex": 3, "userIndex": 0, "role": "MEMBER" },
+    { "groupIndex": 4, "userIndex": 2, "role": "OWNER" },
+    { "groupIndex": 4, "userIndex": 4, "role": "ADMIN" }
+  ]
+}

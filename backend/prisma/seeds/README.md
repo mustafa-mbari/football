@@ -1,69 +1,178 @@
-# Database Seeds - Modular Structure
+# Database Seeding Structure
 
-This directory contains modular seed files for the Football Predictions database.
+This directory contains the database seeding logic with a clean separation between data and seeder classes.
 
-## 📁 File Structure
+## 📁 Folder Structure
 
 ```
-prisma/
-├── seed.ts                           # Main orchestration file
-└── seeds/
-    ├── users.seed.ts                 # User accounts, sessions, login history
-    ├── leagues-teams.seed.ts         # Leagues, teams, favorite teams
-    ├── matches.seed.ts               # Matches, match events
-    ├── predictions-standings.seed.ts # Predictions, standings
-    ├── groups-achievements.seed.ts   # Groups, achievements, notifications
-    └── system-data.seed.ts           # Points rules, analytics, audit logs
+seeds/
+├── classes/              # Seeder classes (logic)
+│   ├── UserSeeder.ts
+│   ├── LeagueSeeder.ts
+│   ├── TeamSeeder.ts
+│   ├── MatchSeeder.ts
+│   ├── PredictionSeeder.ts
+│   ├── GameWeekSeeder.ts
+│   ├── GroupSeeder.ts
+│   ├── AchievementSeeder.ts
+│   ├── NotificationSeeder.ts
+│   └── SystemDataSeeder.ts
+├── data/                 # JSON data files
+│   ├── users.json
+│   ├── leagues.json
+│   ├── teams.json
+│   ├── matches.json
+│   ├── groups.json
+│   ├── achievements.json
+│   ├── notifications.json
+│   └── pointsRules.json
+└── README.md
 ```
 
-## 🚀 Running Seeds
+## 🎯 Design Pattern
 
-### Run all seeds:
+### Seeder Classes
+Each table in the database has its own seeder class that:
+- Loads data from JSON files
+- Contains the seeding logic
+- Has methods for creating related records
+- Named exactly as the table name + "Seeder" (e.g., `UserSeeder`, `TeamSeeder`)
+
+### Data Files
+- Stored in JSON format for easy editing
+- Contains only data, no logic
+- Easy to modify without touching code
+- Can be version controlled separately
+
+## 🚀 How to Use
+
+### Running Seeds
 ```bash
+# Reset database and run all seeds
+npm run prisma:seed
+
+# Or manually
 npx ts-node prisma/seed.ts
-```
 
-### Reset database and run seeds:
-```bash
-npx prisma migrate reset --force
-```
-
-### Reset with environment variable (for CI/CD):
-```bash
+# Reset database with seeds
 PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="yes" npx prisma migrate reset --force
 ```
 
-## 📊 Seed Data Included
+### Adding New Seed Data
 
-### 👥 Users (users.seed.ts)
-- **5 Test Users**: Mustafa (Super Admin), Youssef (Admin), Ali, Mohammed, Majid
-- **Sessions**: Active sessions for users
-- **Login History**: Login records with IP addresses
+1. **Create a JSON data file** in `seeds/data/`:
+```json
+{
+  "tableName": [
+    { "field1": "value1", "field2": "value2" }
+  ]
+}
+```
 
-### 🏆 Leagues & Teams (leagues-teams.seed.ts)
-- **3 Leagues**: Premier League, La Liga, Bundesliga
-- **28 Teams**: 10 PL, 10 La Liga, 8 Bundesliga (with real logos)
-- **Favorite Teams**: User-team relationships
+2. **Create a seeder class** in `seeds/classes/`:
+```typescript
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 
-### 📅 Matches (matches.seed.ts)
-- **22 Matches**: Mix of finished, live, and scheduled
-- **Match Events**: Goals and other events for finished matches
-- **Real Data**: Actual scores, venues, referees
+const prisma = new PrismaClient();
 
-### 🔮 Predictions & Standings (predictions-standings.seed.ts)
-- **55 Predictions**: User predictions with calculated points
-- **10 Standings**: Realistic Premier League table
+interface TableData {
+  field1: string;
+  field2: string;
+}
 
-### 👥 Groups & Achievements (groups-achievements.seed.ts)
-- **5 Groups**: Public and private prediction groups
-- **20 Achievements**: Across all categories
-- **User Achievements**: Unlocked achievements per user
-- **Notifications**: Sample notifications for all users
+interface SeedData {
+  tableName: TableData[];
+}
 
-### 📏 System Data (system-data.seed.ts)
-- **11 Points Rules**: Complete scoring system
-- **31 Days Analytics**: Historical analytics data
-- **Audit Logs**: System audit trail
+export class TableSeeder {
+  private data: SeedData;
+
+  constructor() {
+    const dataPath = path.join(__dirname, '../data/tableName.json');
+    const rawData = fs.readFileSync(dataPath, 'utf-8');
+    this.data = JSON.parse(rawData);
+  }
+
+  async seedTable() {
+    console.log('\n📦 Creating table records...');
+
+    const records = await Promise.all(
+      this.data.tableName.map((record) =>
+        prisma.table.create({
+          data: {
+            field1: record.field1,
+            field2: record.field2,
+          },
+        })
+      )
+    );
+
+    console.log(`✅ Created ${records.length} records`);
+    return records;
+  }
+}
+```
+
+3. **Update the main seed file** (`prisma/seed.ts`):
+```typescript
+import { TableSeeder } from './seeds/classes/TableSeeder';
+
+// In main function:
+const tableSeeder = new TableSeeder();
+await tableSeeder.seedTable();
+```
+
+## 📋 Seeder Classes Overview
+
+| Class Name | Table(s) | Description |
+|------------|----------|-------------|
+| `UserSeeder` | User, Session, LoginHistory | User accounts and authentication |
+| `LeagueSeeder` | League | Football leagues |
+| `TeamSeeder` | Team, UserFavoriteTeam | Teams and user favorites |
+| `MatchSeeder` | Match, MatchEvent | Matches and match events |
+| `PredictionSeeder` | Prediction, Standing | User predictions and league standings |
+| `GameWeekSeeder` | GameWeek, TeamGameWeekStats, StandingsSnapshot | Weekly tracking data |
+| `GroupSeeder` | Group, GroupMember | User groups and memberships |
+| `AchievementSeeder` | Achievement, UserAchievement | Achievements and unlocks |
+| `NotificationSeeder` | Notification | User notifications |
+| `SystemDataSeeder` | PointsRule, Analytics, AuditLog | System configuration and logs |
+
+## ✨ Benefits
+
+1. **Separation of Concerns**: Data and logic are completely separate
+2. **Easy Maintenance**: Update data without touching code
+3. **Reusability**: Seeder classes can be reused in different contexts
+4. **Type Safety**: Full TypeScript support with interfaces
+5. **Scalability**: Easy to add new seeders as the app grows
+6. **Testability**: Each seeder can be tested independently
+7. **Version Control**: Track data changes separately from code changes
+
+## 🔧 Modifying Seed Data
+
+To change seed data, simply edit the JSON files in the `data/` folder. For example, to add a new user:
+
+**Before** (`data/users.json`):
+```json
+{
+  "users": [
+    { "name": "Mustafa", "email": "mustafa@example.com", ... }
+  ]
+}
+```
+
+**After**:
+```json
+{
+  "users": [
+    { "name": "Mustafa", "email": "mustafa@example.com", ... },
+    { "name": "Ahmed", "email": "ahmed@example.com", ... }
+  ]
+}
+```
+
+Then run `npm run prisma:seed` to apply the changes!
 
 ## 🔑 Test User Credentials
 
@@ -77,50 +186,11 @@ All users have password: `password123`
 | mohammed@example.com | mohammed | USER | #4 | 875 | 61.8% |
 | majid@example.com | majid | USER | #5 | 650 | 58.2% |
 
-## 🔧 Customization
-
-### Adding New Seed Data
-
-1. Create a new seed file in `seeds/` directory
-2. Export seed functions
-3. Import and call in `seed.ts`
-
-Example:
-```typescript
-// seeds/my-new-data.seed.ts
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-
-export async function seedMyData() {
-  console.log('Creating my data...');
-  // Your seed logic here
-  console.log('✅ Created my data');
-}
-```
-
-```typescript
-// seed.ts
-import { seedMyData } from './seeds/my-new-data.seed';
-
-async function main() {
-  // ... other seeds
-  await seedMyData();
-}
-```
-
-### Modifying Existing Seeds
-
-Each seed file is independent. You can modify individual files without affecting others:
-
-- **Users**: Edit `users.seed.ts`
-- **Teams**: Edit `leagues-teams.seed.ts`
-- **Matches**: Edit `matches.seed.ts`
-- etc.
-
 ## 📝 Notes
 
-- All seeds use simple password hashing for testing (prefix: `hashed_`)
-- In production, use proper bcrypt/argon2 hashing
-- Dates are generated relative to current time
-- Team logos use official URLs where available
-- Analytics data includes last 30 days
+- All seeder classes follow the same pattern for consistency
+- JSON files are validated at runtime by TypeScript interfaces
+- Dates can be specified as ISO strings or calculated dynamically
+- Related data uses indices to reference other records (e.g., `userIndex: 0`)
+- Password hashing is handled by bcrypt in the UserSeeder
+- Team logos use official URLs from league resources

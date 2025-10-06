@@ -1,0 +1,30 @@
+{
+  "premierLeague": [
+    { "homeTeamIndex": 0, "awayTeamIndex": 4, "daysOffset": -5, "hour": 15, "status": "FINISHED", "homeScore": 2, "awayScore": 1, "htHome": 1, "htAway": 0, "week": 1 },
+    { "homeTeamIndex": 1, "awayTeamIndex": 3, "daysOffset": -5, "hour": 17, "status": "FINISHED", "homeScore": 3, "awayScore": 1, "htHome": 2, "htAway": 1, "week": 1 },
+    { "homeTeamIndex": 2, "awayTeamIndex": 5, "daysOffset": -4, "hour": 12, "status": "FINISHED", "homeScore": 1, "awayScore": 1, "htHome": 0, "htAway": 1, "week": 1 },
+    { "homeTeamIndex": 6, "awayTeamIndex": 7, "daysOffset": -4, "hour": 15, "status": "FINISHED", "homeScore": 2, "awayScore": 0, "htHome": 1, "htAway": 0, "week": 1 },
+    { "homeTeamIndex": 8, "awayTeamIndex": 9, "daysOffset": -3, "hour": 15, "status": "FINISHED", "homeScore": 1, "awayScore": 2, "htHome": 0, "htAway": 1, "week": 1 },
+    { "homeTeamIndex": 3, "awayTeamIndex": 2, "daysOffset": 0, "hour": "current", "status": "LIVE", "homeScore": 1, "awayScore": 0, "htHome": 0, "htAway": 0, "minute": 67, "week": 2 },
+    { "homeTeamIndex": 4, "awayTeamIndex": 1, "daysOffset": 1, "hour": 17, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 5, "awayTeamIndex": 0, "daysOffset": 2, "hour": 12, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 7, "awayTeamIndex": 8, "daysOffset": 2, "hour": 15, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 9, "awayTeamIndex": 6, "daysOffset": 3, "hour": 16, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 0, "awayTeamIndex": 3, "daysOffset": 7, "hour": 12, "status": "SCHEDULED", "week": 3 },
+    { "homeTeamIndex": 1, "awayTeamIndex": 2, "daysOffset": 7, "hour": 17, "status": "SCHEDULED", "week": 3 }
+  ],
+  "laLiga": [
+    { "homeTeamIndex": 0, "awayTeamIndex": 1, "daysOffset": -4, "hour": 20, "status": "FINISHED", "homeScore": 2, "awayScore": 1, "htHome": 1, "htAway": 0, "week": 1 },
+    { "homeTeamIndex": 2, "awayTeamIndex": 3, "daysOffset": -3, "hour": 18, "status": "FINISHED", "homeScore": 3, "awayScore": 2, "htHome": 2, "htAway": 1, "week": 1 },
+    { "homeTeamIndex": 4, "awayTeamIndex": 5, "daysOffset": -3, "hour": 16, "status": "FINISHED", "homeScore": 0, "awayScore": 0, "htHome": 0, "htAway": 0, "week": 1 },
+    { "homeTeamIndex": 1, "awayTeamIndex": 2, "daysOffset": 2, "hour": 20, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 3, "awayTeamIndex": 0, "daysOffset": 3, "hour": 18, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 6, "awayTeamIndex": 7, "daysOffset": 4, "hour": 16, "status": "SCHEDULED", "week": 2 }
+  ],
+  "bundesliga": [
+    { "homeTeamIndex": 0, "awayTeamIndex": 1, "daysOffset": -6, "hour": 18, "status": "FINISHED", "homeScore": 4, "awayScore": 2, "htHome": 2, "htAway": 1, "week": 1 },
+    { "homeTeamIndex": 2, "awayTeamIndex": 3, "daysOffset": -5, "hour": 15, "status": "FINISHED", "homeScore": 1, "awayScore": 3, "htHome": 0, "htAway": 2, "week": 1 },
+    { "homeTeamIndex": 4, "awayTeamIndex": 5, "daysOffset": 1, "hour": 18, "status": "SCHEDULED", "week": 2 },
+    { "homeTeamIndex": 6, "awayTeamIndex": 7, "daysOffset": 2, "hour": 15, "status": "SCHEDULED", "week": 2 }
+  ]
+}

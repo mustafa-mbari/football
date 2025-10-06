@@ -1,65 +1,76 @@
 import { PrismaClient } from '@prisma/client';
-import { seedUsers, seedUserSessions, seedLoginHistory } from './seeds/users.seed';
-import { seedLeagues, seedTeams, seedFavoriteTeams } from './seeds/leagues-teams.seed';
-import { seedMatches, seedMatchEvents } from './seeds/matches.seed';
-import { seedPredictions, seedStandings } from './seeds/predictions-standings.seed';
-import {
-  seedGroups,
-  seedGroupMembers,
-  seedAchievements,
-  seedUserAchievements,
-  seedNotifications,
-} from './seeds/groups-achievements.seed';
-import { seedPointsRules, seedAnalytics, seedAuditLogs } from './seeds/system-data.seed';
-import { seedGameWeeks, seedTeamGameWeekStats, seedStandingsSnapshots } from './seeds/gameweeks.seed';
+import { UserSeeder } from './seeds/classes/UserSeeder';
+import { LeagueSeeder } from './seeds/classes/LeagueSeeder';
+import { TeamSeeder } from './seeds/classes/TeamSeeder';
+import { MatchSeeder } from './seeds/classes/MatchSeeder';
+import { PredictionSeeder } from './seeds/classes/PredictionSeeder';
+import { GameWeekSeeder } from './seeds/classes/GameWeekSeeder';
+import { GroupSeeder } from './seeds/classes/GroupSeeder';
+import { AchievementSeeder } from './seeds/classes/AchievementSeeder';
+import { NotificationSeeder } from './seeds/classes/NotificationSeeder';
+import { SystemDataSeeder } from './seeds/classes/SystemDataSeeder';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting comprehensive database seeding...');
-  console.log('📦 Modular seed structure enabled\n');
+  console.log('📦 Modular seed structure with separate data and classes\n');
 
   try {
+    // Initialize all seeders
+    const userSeeder = new UserSeeder();
+    const leagueSeeder = new LeagueSeeder();
+    const teamSeeder = new TeamSeeder();
+    const matchSeeder = new MatchSeeder();
+    const predictionSeeder = new PredictionSeeder();
+    const gameWeekSeeder = new GameWeekSeeder();
+    const groupSeeder = new GroupSeeder();
+    const achievementSeeder = new AchievementSeeder();
+    const notificationSeeder = new NotificationSeeder();
+    const systemDataSeeder = new SystemDataSeeder();
+
     // 1. Create Users
-    const users = await seedUsers();
-    await seedUserSessions(users);
-    await seedLoginHistory(users);
+    const users = await userSeeder.seedUsers();
+    await userSeeder.seedUserSessions(users);
+    await userSeeder.seedLoginHistory(users);
 
     // 2. Create Leagues & Teams
-    const leagues = await seedLeagues();
-    const teams = await seedTeams(leagues);
-    await seedFavoriteTeams(users, teams);
+    const leagues = await leagueSeeder.seedLeagues();
+    const teams = await teamSeeder.seedTeams(leagues);
+    await teamSeeder.seedFavoriteTeams(users, teams);
 
     // 3. Create Matches & Events
-    const matches = await seedMatches(leagues, teams);
-    await seedMatchEvents(matches);
+    const matches = await matchSeeder.seedMatches(leagues, teams);
+    await matchSeeder.seedMatchEvents(matches);
 
     // 4. Create Predictions & Standings
-    await seedPredictions(users, matches);
-    await seedStandings(leagues, teams);
+    await predictionSeeder.seedPredictions(users, matches);
+    await predictionSeeder.seedStandings(leagues, teams);
 
     // 4.5. Create GameWeeks and Weekly Tracking
-    await seedGameWeeks();
-    await seedTeamGameWeekStats();
-    await seedStandingsSnapshots();
+    await gameWeekSeeder.seedGameWeeks();
+    await gameWeekSeeder.seedTeamGameWeekStats();
+    await gameWeekSeeder.seedStandingsSnapshots();
 
     // 5. Create Groups & Achievements
-    const groups = await seedGroups(users);
-    await seedGroupMembers(groups, users);
-    const achievements = await seedAchievements();
-    await seedUserAchievements(users, achievements);
-    await seedNotifications(users);
+    const groups = await groupSeeder.seedGroups(users);
+    await groupSeeder.seedGroupMembers(groups, users);
+    const achievements = await achievementSeeder.seedAchievements();
+    await achievementSeeder.seedUserAchievements(users, achievements);
+    await notificationSeeder.seedNotifications(users);
 
     // 6. Create System Data
-    await seedPointsRules();
-    await seedAnalytics();
-    await seedAuditLogs(users);
+    await systemDataSeeder.seedPointsRules();
+    await systemDataSeeder.seedAnalytics();
+    await systemDataSeeder.seedAuditLogs(users);
 
     console.log('\n🎉 Seeding completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   ✅ ${users.length} Users (Mustafa, Youssef, Ali, Mohammed, Majid)`);
     console.log(`   ✅ 3 Leagues (Premier League, La Liga, Bundesliga)`);
-    console.log(`   ✅ ${teams.plTeams.length + teams.laLigaTeams.length + teams.bundesligaTeams.length} Teams with real logos`);
+    console.log(
+      `   ✅ ${teams.plTeams.length + teams.laLigaTeams.length + teams.bundesligaTeams.length} Teams with real logos`
+    );
     console.log(`   ✅ ${matches.length} Matches (finished, live, and scheduled)`);
     console.log(`   ✅ ${groups.length} Groups`);
     console.log(`   ✅ ${achievements.length} Achievements`);

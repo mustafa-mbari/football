@@ -1,0 +1,182 @@
+{
+  "achievements": [
+    {
+      "name": "First Prediction",
+      "description": "Make your first match prediction",
+      "category": "PREDICTIONS",
+      "requiredValue": 1,
+      "points": 10,
+      "iconUrl": "🎯"
+    },
+    {
+      "name": "Prediction Veteran",
+      "description": "Make 50 predictions",
+      "category": "PREDICTIONS",
+      "requiredValue": 50,
+      "points": 100,
+      "iconUrl": "📊"
+    },
+    {
+      "name": "Sharp Shooter",
+      "description": "Achieve 70% prediction accuracy",
+      "category": "ACCURACY",
+      "requiredValue": 70,
+      "points": 150,
+      "iconUrl": "🎪"
+    },
+    {
+      "name": "Perfect Score",
+      "description": "Get 5 exact score predictions",
+      "category": "ACCURACY",
+      "requiredValue": 5,
+      "points": 200,
+      "iconUrl": "💯"
+    },
+    {
+      "name": "Hot Streak",
+      "description": "Get 5 predictions correct in a row",
+      "category": "STREAKS",
+      "requiredValue": 5,
+      "points": 100,
+      "iconUrl": "🔥"
+    },
+    {
+      "name": "Unstoppable",
+      "description": "Get 10 predictions correct in a row",
+      "category": "STREAKS",
+      "requiredValue": 10,
+      "points": 300,
+      "iconUrl": "⚡"
+    },
+    {
+      "name": "Point Collector",
+      "description": "Earn 500 total points",
+      "category": "POINTS",
+      "requiredValue": 500,
+      "points": 50,
+      "iconUrl": "💰"
+    },
+    {
+      "name": "Point Master",
+      "description": "Earn 1000 total points",
+      "category": "POINTS",
+      "requiredValue": 1000,
+      "points": 150,
+      "iconUrl": "💎"
+    },
+    {
+      "name": "Team Player",
+      "description": "Join your first group",
+      "category": "SOCIAL",
+      "requiredValue": 1,
+      "points": 25,
+      "iconUrl": "👥"
+    },
+    {
+      "name": "Social Butterfly",
+      "description": "Join 5 different groups",
+      "category": "SOCIAL",
+      "requiredValue": 5,
+      "points": 75,
+      "iconUrl": "🦋"
+    },
+    {
+      "name": "Weekend Warrior",
+      "description": "Predict all weekend matches correctly",
+      "category": "SPECIAL",
+      "points": 250,
+      "iconUrl": "🏅"
+    },
+    {
+      "name": "Derby King",
+      "description": "Correctly predict 3 derby matches",
+      "category": "SPECIAL",
+      "requiredValue": 3,
+      "points": 200,
+      "iconUrl": "👑"
+    },
+    {
+      "name": "Early Bird",
+      "description": "Make predictions 24h before match",
+      "category": "SPECIAL",
+      "requiredValue": 10,
+      "points": 100,
+      "iconUrl": "🐦"
+    },
+    {
+      "name": "Underdog Expert",
+      "description": "Correctly predict 5 underdog victories",
+      "category": "SPECIAL",
+      "requiredValue": 5,
+      "points": 180,
+      "iconUrl": "🐕"
+    },
+    {
+      "name": "Clean Sheet Prophet",
+      "description": "Predict 10 clean sheets correctly",
+      "category": "SPECIAL",
+      "requiredValue": 10,
+      "points": 120,
+      "iconUrl": "🧤"
+    },
+    {
+      "name": "Goal Fest",
+      "description": "Predict 5 high-scoring matches (4+ goals)",
+      "category": "SPECIAL",
+      "requiredValue": 5,
+      "points": 150,
+      "iconUrl": "⚽"
+    },
+    {
+      "name": "League Expert",
+      "description": "Achieve 80% accuracy in one league",
+      "category": "ACCURACY",
+      "requiredValue": 80,
+      "points": 250,
+      "iconUrl": "🎓"
+    },
+    {
+      "name": "Consistency King",
+      "description": "Score points in 20 consecutive matches",
+      "category": "STREAKS",
+      "requiredValue": 20,
+      "points": 400,
+      "iconUrl": "🔒"
+    },
+    {
+      "name": "Top of the League",
+      "description": "Reach rank #1 in global leaderboard",
+      "category": "POINTS",
+      "requiredValue": 1,
+      "points": 500,
+      "iconUrl": "🥇"
+    },
+    {
+      "name": "Community Leader",
+      "description": "Create a group with 20+ members",
+      "category": "SOCIAL",
+      "requiredValue": 20,
+      "points": 200,
+      "iconUrl": "🎖️"
+    }
+  ],
+  "userAchievements": [
+    { "userIndex": 0, "achievementIndex": 0, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 1, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 2, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 4, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 6, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 7, "progress": 100 },
+    { "userIndex": 0, "achievementIndex": 8, "progress": 100 },
+    { "userIndex": 1, "achievementIndex": 0, "progress": 100 },
+    { "userIndex": 1, "achievementIndex": 2, "progress": 100 },
+    { "userIndex": 1, "achievementIndex": 6, "progress": 100 },
+    { "userIndex": 1, "achievementIndex": 7, "progress": 100 },
+    { "userIndex": 2, "achievementIndex": 0, "progress": 100 },
+    { "userIndex": 2, "achievementIndex": 6, "progress": 100 },
+    { "userIndex": 2, "achievementIndex": 8, "progress": 100 },
+    { "userIndex": 3, "achievementIndex": 0, "progress": 100 },
+    { "userIndex": 3, "achievementIndex": 6, "progress": 100 },
+    { "userIndex": 4, "achievementIndex": 0, "progress": 100 }
+  ]
+}

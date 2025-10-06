@@ -1,0 +1,79 @@
+{
+  "notifications": [
+    {
+      "userIndex": 0,
+      "type": "ACHIEVEMENT_UNLOCKED",
+      "title": "New Achievement!",
+      "message": "You unlocked \"Top of the League\" achievement!",
+      "isRead": false,
+      "hoursAgo": 2
+    },
+    {
+      "userIndex": 0,
+      "type": "POINTS_EARNED",
+      "title": "Points Earned!",
+      "message": "You earned 15 points from your Arsenal prediction!",
+      "isRead": true,
+      "readHoursAgo": 1,
+      "hoursAgo": 3
+    },
+    {
+      "userIndex": 0,
+      "type": "MATCH_REMINDER",
+      "title": "Upcoming Match",
+      "message": "Liverpool vs Chelsea starts in 2 hours! Don't forget your prediction.",
+      "isRead": false,
+      "minutesAgo": 30
+    },
+    {
+      "userIndex": 1,
+      "type": "LEADERBOARD_UPDATE",
+      "title": "Leaderboard Update",
+      "message": "You moved up to rank #2! Keep it up!",
+      "isRead": false,
+      "hoursAgo": 1
+    },
+    {
+      "userIndex": 1,
+      "type": "GROUP_INVITATION",
+      "title": "Group Invitation",
+      "message": "Mustafa invited you to \"Top Predictors\" group",
+      "isRead": true,
+      "readHoursAgo": 6,
+      "hoursAgo": 12
+    },
+    {
+      "userIndex": 2,
+      "type": "PREDICTION_DEADLINE",
+      "title": "Prediction Deadline",
+      "message": "Only 1 hour left to predict Manchester City vs Tottenham!",
+      "isRead": false,
+      "minutesAgo": 15
+    },
+    {
+      "userIndex": 2,
+      "type": "MATCH_RESULT",
+      "title": "Match Result",
+      "message": "Liverpool won 3-1! Your prediction earned 3 points.",
+      "isRead": true,
+      "readHoursAgo": 4,
+      "hoursAgo": 5
+    },
+    {
+      "userIndex": 3,
+      "type": "ACHIEVEMENT_UNLOCKED",
+      "title": "Achievement Unlocked",
+      "message": "You unlocked \"Point Collector\" - 500 points milestone!",
+      "isRead": false,
+      "hoursAgo": 8
+    },
+    {
+      "userIndex": 4,
+      "type": "SYSTEM_ANNOUNCEMENT",
+      "title": "Welcome to Football Predictions!",
+      "message": "Start making predictions to earn points and unlock achievements!",
+      "isRead": false,
+      "hoursAgo": 24
+    }
+  ]
+}
