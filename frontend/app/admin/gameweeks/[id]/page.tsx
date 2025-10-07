@@ -14,6 +14,7 @@ interface Team {
   id: number;
   name: string;
   code: string;
+  logoUrl?: string | null;
 }
 
 interface Match {
@@ -67,6 +68,8 @@ export default function GameWeekDetailPage() {
   const [editingMatch, setEditingMatch] = useState<number | null>(null);
   const [scores, setScores] = useState<{ [key: number]: { home: string; away: string } }>({});
   const [completingWeek, setCompletingWeek] = useState(false);
+  const [syncingMatch, setSyncingMatch] = useState<number | null>(null);
+  const [syncingWeek, setSyncingWeek] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
@@ -130,6 +133,62 @@ export default function GameWeekDetailPage() {
       fetchGameWeek();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to update match score');
+    }
+  };
+
+  const handleSyncMatch = async (matchId: number) => {
+    const confirmed = confirm('Sync this match? This will update standings and calculate prediction points.');
+    if (!confirmed) return;
+
+    try {
+      setSyncingMatch(matchId);
+      const response = await fetch(`http://localhost:7070/api/sync/match/${matchId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message || 'Match synced successfully!');
+        fetchGameWeek();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to sync match');
+      }
+    } catch (error) {
+      alert('Failed to sync match');
+      console.error(error);
+    } finally {
+      setSyncingMatch(null);
+    }
+  };
+
+  const handleSyncWeek = async () => {
+    const confirmed = confirm(
+      'Sync all finished matches in this week? This will update standings and calculate all prediction points.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setSyncingWeek(true);
+      const response = await fetch(`http://localhost:7070/api/sync/gameweek/${params.id}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message || 'GameWeek synced successfully!');
+        fetchGameWeek();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to sync gameweek');
+      }
+    } catch (error) {
+      alert('Failed to sync gameweek');
+      console.error(error);
+    } finally {
+      setSyncingWeek(false);
     }
   };
 
@@ -309,6 +368,14 @@ export default function GameWeekDetailPage() {
               >
                 ➕ Add Matches
               </Button>
+              <Button
+                onClick={handleSyncWeek}
+                disabled={syncingWeek}
+                variant="outline"
+                className="border-purple-500 text-purple-600 hover:bg-purple-50"
+              >
+                {syncingWeek ? 'Syncing...' : '🔄 Sync All Matches'}
+              </Button>
               {!isCompleted && allMatchesHaveScores && (
                 <Button
                   onClick={handleCompleteWeek}
@@ -425,8 +492,15 @@ export default function GameWeekDetailPage() {
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between gap-4">
                           {/* Home Team */}
-                          <div className="flex-1 text-right">
+                          <div className="flex-1 flex items-center justify-end gap-3">
                             <p className="font-semibold text-lg">{match.homeTeam.name}</p>
+                            {match.homeTeam.logoUrl && (
+                              <img
+                                src={match.homeTeam.logoUrl}
+                                alt={match.homeTeam.name}
+                                className="w-8 h-8 object-contain"
+                              />
+                            )}
                           </div>
 
                           {/* Score Display/Edit */}
@@ -464,12 +538,19 @@ export default function GameWeekDetailPage() {
                           )}
 
                           {/* Away Team */}
-                          <div className="flex-1">
+                          <div className="flex-1 flex items-center gap-3">
+                            {match.awayTeam.logoUrl && (
+                              <img
+                                src={match.awayTeam.logoUrl}
+                                alt={match.awayTeam.name}
+                                className="w-8 h-8 object-contain"
+                              />
+                            )}
                             <p className="font-semibold text-lg">{match.awayTeam.name}</p>
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex flex-col gap-2 min-w-[120px]">
+                          <div className="flex flex-col gap-2 min-w-[140px]">
                             {isEditing ? (
                               <>
                                 <Button onClick={() => handleUpdateScore(match.id)} size="sm" className="w-full">
@@ -496,6 +577,17 @@ export default function GameWeekDetailPage() {
                                 <Button onClick={() => setEditingMatch(match.id)} variant="outline" size="sm" className="w-full">
                                   {hasScore ? '✏️ Edit' : '➕ Enter Score'}
                                 </Button>
+                                {hasScore && match.status?.toUpperCase() === 'FINISHED' && (
+                                  <Button
+                                    onClick={() => handleSyncMatch(match.id)}
+                                    disabled={syncingMatch === match.id}
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                                  >
+                                    {syncingMatch === match.id ? 'Syncing...' : '🔄 Sync'}
+                                  </Button>
+                                )}
                                 <div className="flex items-center justify-center gap-2">
                                   {getMatchStatusBadge(match.status)}
                                 </div>

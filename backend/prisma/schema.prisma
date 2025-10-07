@@ -192,6 +192,7 @@ model Match {
   status           MatchStatus  @default(SCHEDULED)
   minute           Int?
   isPredictionLocked Boolean    @default(false)
+  isSynced         Boolean      @default(false)
 
   // Relations
   predictions      Prediction[]

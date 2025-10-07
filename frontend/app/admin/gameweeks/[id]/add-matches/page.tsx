@@ -49,6 +49,7 @@ export default function AddMatchesPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Form state
   const [homeTeamId, setHomeTeamId] = useState('');
@@ -89,7 +90,23 @@ export default function AddMatchesPage() {
     }
   };
 
-  const handleCreateMatch = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setHomeTeamId('');
+    setAwayTeamId('');
+    setMatchDate('');
+    setMatchTime('');
+    setStatus('SCHEDULED');
+    setIsPostponed(false);
+  };
+
+  const setCurrentTime = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    setMatchTime(`${hours}:${minutes}`);
+  };
+
+  const handleCreateMatch = async (e: React.FormEvent, addAnother: boolean = false) => {
     e.preventDefault();
 
     if (!homeTeamId || !awayTeamId || !matchDate || !matchTime) {
@@ -104,6 +121,7 @@ export default function AddMatchesPage() {
 
     try {
       setCreating(true);
+      setSuccessMessage('');
 
       // Combine date and time
       const dateTimeString = `${matchDate}T${matchTime}:00`;
@@ -124,8 +142,14 @@ export default function AddMatchesPage() {
       });
 
       if (response.ok) {
-        alert('Match created and assigned successfully!');
-        router.push(`/admin/gameweeks/${params.id}`);
+        if (addAnother) {
+          setSuccessMessage('Match created successfully! Add another one below.');
+          resetForm();
+          // Scroll to top to see success message
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          router.push(`/admin/gameweeks/${params.id}`);
+        }
       } else {
         const data = await response.json();
         alert(data.message || 'Failed to create match');
@@ -223,6 +247,17 @@ export default function AddMatchesPage() {
           </div>
         </div>
 
+        {/* Success Message */}
+        {successMessage && (
+          <Card className="mb-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+            <CardContent className="pt-6">
+              <p className="text-green-900 dark:text-green-300 font-medium">
+                ✓ {successMessage}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Info Card */}
         <Card className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6">
@@ -300,13 +335,23 @@ export default function AddMatchesPage() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Match Time *
                   </label>
-                  <Input
-                    type="time"
-                    value={matchTime}
-                    onChange={(e) => setMatchTime(e.target.value)}
-                    required
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="time"
+                      value={matchTime}
+                      onChange={(e) => setMatchTime(e.target.value)}
+                      required
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={setCurrentTime}
+                      variant="outline"
+                      className="whitespace-nowrap"
+                    >
+                      🕒 Now
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -341,15 +386,25 @@ export default function AddMatchesPage() {
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Buttons */}
               <div className="flex items-center gap-4 pt-4">
                 <Button
                   type="submit"
+                  onClick={(e) => handleCreateMatch(e, false)}
                   disabled={creating}
                   size="lg"
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {creating ? 'Creating Match...' : '✓ Create Match'}
+                  {creating ? 'Creating...' : '✓ Create Match'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={(e) => handleCreateMatch(e, true)}
+                  disabled={creating}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {creating ? 'Creating...' : '➕ Create & Add Another'}
                 </Button>
                 <Link href={`/admin/gameweeks/${params.id}`}>
                   <Button type="button" variant="outline" size="lg">

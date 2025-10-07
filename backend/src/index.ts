@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler';
+import { startSessionCleanupTask } from './utils/sessionCleanup';
 
 // Import routes
 import authRoutes from './routes/authRoutes';
@@ -14,6 +15,7 @@ import leaderboardRoutes from './routes/leaderboardRoutes';
 import weekRoutes from './routes/weekRoutes';
 import standingRoutes from './routes/standingRoutes';
 import gameWeekRoutes from './routes/gameWeekRoutes';
+import syncRoutes from './routes/syncRoutes';
 
 dotenv.config();
 
@@ -39,6 +41,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/weeks', weekRoutes);
 app.use('/api/standings', standingRoutes);
 app.use('/api/gameweeks', gameWeekRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -50,4 +53,7 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
+
+  // Start periodic session cleanup (runs every hour)
+  startSessionCleanupTask();
 });

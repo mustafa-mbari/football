@@ -81,20 +81,73 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is deactivated. Please contact support.'
+      });
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
+      // Log failed login attempt
+      await prisma.loginHistory.create({
+        data: {
+          userId: user.id,
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.headers['user-agent'] || 'unknown',
+          loginStatus: false,
+          failReason: 'Invalid password'
+        }
+      });
+
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    // Set simple cookie for session (instead of JWT for now)
-    res.cookie('userId', user.id.toString(), {
+    // Generate secure session token
+    const crypto = require('crypto');
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+
+    // Create session in database
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        token: sessionToken,
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+        expiresAt
+      }
+    });
+
+    // Update user's last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
+
+    // Log successful login
+    await prisma.loginHistory.create({
+      data: {
+        userId: user.id,
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+        loginStatus: true
+      }
+    });
+
+    // Set session cookie
+    res.cookie('sessionToken', sessionToken, {
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
     res.json({
@@ -103,6 +156,7 @@ export const login = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        name: user.name,
         role: user.role
       }
     });
@@ -115,11 +169,29 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
-  res.clearCookie('userId');
-  res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
+  try {
+    const sessionToken = req.cookies?.sessionToken;
+
+    if (sessionToken) {
+      // Delete session from database
+      await prisma.session.deleteMany({
+        where: { token: sessionToken }
+      });
+    }
+
+    // Clear session cookie
+    res.clearCookie('sessionToken');
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 export const getCurrentUser = async (req: Request, res: Response) => {
