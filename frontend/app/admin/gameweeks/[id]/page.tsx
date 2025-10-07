@@ -648,7 +648,18 @@ export default function GameWeekDetailPage() {
                           key={stat.id}
                           className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >
-                          <td className="py-3 px-4 font-medium">{stat.team.name}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              {stat.team.logoUrl && (
+                                <img
+                                  src={stat.team.logoUrl}
+                                  alt={stat.team.name}
+                                  className="w-6 h-6 object-contain"
+                                />
+                              )}
+                              <span className="font-medium">{stat.team.name}</span>
+                            </div>
+                          </td>
                           <td className="py-3 px-2 text-center">{stat.matchesPlayed}</td>
                           <td className="py-3 px-2 text-center">{stat.won}</td>
                           <td className="py-3 px-2 text-center">{stat.drawn}</td>

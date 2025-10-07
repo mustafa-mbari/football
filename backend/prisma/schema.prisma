@@ -103,7 +103,7 @@ model League {
   // Relations
   teams       Team[]
   matches     Match[]
-  standings   Standing[]
+  tables      Table[]
   gameWeeks   GameWeek[]
 
   createdAt   DateTime    @default(now())
@@ -131,11 +131,11 @@ model Team {
   leagueId            Int
   homeMatches         Match[]              @relation("HomeTeam")
   awayMatches         Match[]              @relation("AwayTeam")
-  standings           Standing[]
+  tables              Table[]
   favoredBy           UserFavoriteTeam[]
   gameWeekStats       TeamGameWeekStats[]
-  standingsSnapshots  StandingsSnapshot[]
-  nextMatchFor        Standing[]           @relation("NextOpponent")
+  tableSnapshots      TableSnapshot[]
+  nextMatchFor        Table[]              @relation("NextOpponent")
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -160,7 +160,6 @@ model UserFavoriteTeam {
 // ==================== MATCHES ====================
 model Match {
   id               Int          @id @default(autoincrement())
-  externalId       String?      @unique
   league           League       @relation(fields: [leagueId], references: [id])
   leagueId         Int
   homeTeam         Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
@@ -173,30 +172,18 @@ model Match {
   weekNumber          Int?
   originalWeekNumber  Int?        // Original week before postponement
   isPostponed         Boolean     @default(false)
-  round               String?
-  venue               String?
-  referee             String?
-  attendance          Int?
 
   // Scores
   homeScore        Int?
   awayScore        Int?
-  homeHalfTimeScore Int?
-  awayHalfTimeScore Int?
-  homeExtraTimeScore Int?
-  awayExtraTimeScore Int?
-  homePenaltyScore Int?
-  awayPenaltyScore Int?
 
   // Status
   status           MatchStatus  @default(SCHEDULED)
-  minute           Int?
   isPredictionLocked Boolean    @default(false)
   isSynced         Boolean      @default(false)
 
   // Relations
   predictions      Prediction[]
-  events           MatchEvent[]
   gameWeekMatches  GameWeekMatch[]
 
   createdAt        DateTime     @default(now())
@@ -207,20 +194,6 @@ model Match {
   @@index([status])
   @@index([weekNumber])
   @@unique([homeTeamId, awayTeamId, matchDate])
-}
-
-model MatchEvent {
-  id         Int            @id @default(autoincrement())
-  matchId    Int
-  match      Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  type       MatchEventType
-  minute     Int
-  playerName String?
-  teamSide   String?        // "HOME" | "AWAY"
-  details    Json?
-  createdAt  DateTime       @default(now())
-
-  @@index([matchId])
 }
 
 // ==================== PREDICTIONS ====================
@@ -244,8 +217,9 @@ model Prediction {
   totalPoints        Int      @default(0) // Total points earned
 
   // Flags
-  isProcessed        Boolean  @default(false)
-  isLate             Boolean  @default(false)
+  isProcessed        Boolean          @default(false)
+  isLate             Boolean          @default(false)
+  status             PredictionStatus @default(NOT_PLAYED_YET)
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -256,8 +230,8 @@ model Prediction {
   @@index([isProcessed])
 }
 
-// ==================== STANDINGS ====================
-model Standing {
+// ==================== TABLES ====================
+model Table {
   id                  Int      @id @default(autoincrement())
   league              League   @relation(fields: [leagueId], references: [id])
   leagueId            Int
@@ -298,7 +272,7 @@ model GameWeek {
   // Relations
   matches         GameWeekMatch[]
   teamStats       TeamGameWeekStats[]
-  snapshots       StandingsSnapshot[]
+  snapshots       TableSnapshot[]
 
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
@@ -314,6 +288,7 @@ model GameWeekMatch {
   gameWeekId  Int
   match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   matchId     Int
+  isSynced    Boolean  @default(false)
 
   createdAt   DateTime @default(now())
 
@@ -348,14 +323,14 @@ model TeamGameWeekStats {
   @@index([teamId])
 }
 
-model StandingsSnapshot {
+model TableSnapshot {
   id              Int      @id @default(autoincrement())
   gameWeek        GameWeek @relation(fields: [gameWeekId], references: [id], onDelete: Cascade)
   gameWeekId      Int
   team            Team     @relation(fields: [teamId], references: [id])
   teamId          Int
 
-  // Cumulative standings after this gameweek
+  // Cumulative table standings after this gameweek
   position        Int
   played          Int      @default(0)
   won             Int      @default(0)
@@ -399,13 +374,15 @@ model Group {
 }
 
 model GroupMember {
-  id          Int      @id @default(autoincrement())
-  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId     Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  role        GroupRole @default(MEMBER)
-  joinedAt    DateTime @default(now())
+  id              Int       @id @default(autoincrement())
+  group           Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId         Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          Int
+  role            GroupRole @default(MEMBER)
+  collectedPoints Int       @default(0)
+  lastPointDate   DateTime?
+  joinedAt        DateTime  @default(now())
 
   @@unique([groupId, userId])
   @@index([groupId])
@@ -566,15 +543,11 @@ enum Result {
   DRAW
 }
 
-enum MatchEventType {
-  GOAL
-  OWN_GOAL
-  PENALTY
-  YELLOW_CARD
-  RED_CARD
-  SUBSTITUTION
-  VAR
-  INJURY
+enum PredictionStatus {
+  NOT_PLAYED_YET
+  IN_PROGRESS
+  COMPLETED
+  SYNCED
 }
 
 enum PointsType {
