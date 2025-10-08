@@ -72,6 +72,11 @@ export default function AdminDashboard() {
                 ⚽ Manage Matches
               </Button>
             </Link>
+            <Link href="/admin/matches/bulk-import">
+              <Button variant="ghost" size="sm">
+                📋 Bulk Import
+              </Button>
+            </Link>
             <Link href="/admin/standings">
               <Button variant="ghost" size="sm">
                 📊 Update Standings

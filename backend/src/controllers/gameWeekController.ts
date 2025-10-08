@@ -3,6 +3,96 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Sync all matches to their gameweeks based on weekNumber
+export const syncMatchesToGameWeeks = async (req: Request, res: Response) => {
+  try {
+    const { leagueId } = req.body;
+
+    // Get all matches for the league
+    const matches = await prisma.match.findMany({
+      where: leagueId ? { leagueId: parseInt(leagueId) } : {},
+      select: {
+        id: true,
+        weekNumber: true,
+        leagueId: true,
+      },
+    });
+
+    // Get all gameweeks
+    const gameWeeks = await prisma.gameWeek.findMany({
+      where: leagueId ? { leagueId: parseInt(leagueId) } : {},
+      select: {
+        id: true,
+        weekNumber: true,
+        leagueId: true,
+      },
+    });
+
+    let synced = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const match of matches) {
+      if (!match.weekNumber) {
+        skipped++;
+        continue;
+      }
+
+      // Find the corresponding gameweek
+      const gameWeek = gameWeeks.find(
+        (gw) => gw.weekNumber === match.weekNumber && gw.leagueId === match.leagueId
+      );
+
+      if (!gameWeek) {
+        errors.push(`No gameweek found for match ${match.id}, week ${match.weekNumber}, league ${match.leagueId}`);
+        skipped++;
+        continue;
+      }
+
+      // Create GameWeekMatch entry if it doesn't exist
+      try {
+        await prisma.gameWeekMatch.upsert({
+          where: {
+            gameWeekId_matchId: {
+              gameWeekId: gameWeek.id,
+              matchId: match.id,
+            },
+          },
+          create: {
+            gameWeekId: gameWeek.id,
+            matchId: match.id,
+            isSynced: true,
+          },
+          update: {
+            isSynced: true,
+          },
+        });
+        synced++;
+      } catch (error: any) {
+        errors.push(`Failed to sync match ${match.id}: ${error.message}`);
+        skipped++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Synced ${synced} matches to gameweeks`,
+      stats: {
+        total: matches.length,
+        synced,
+        skipped,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+    });
+  } catch (error: any) {
+    console.error('Sync matches error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Get all gameweeks for a league
 export const getGameWeeksByLeague = async (req: Request, res: Response) => {
   try {
@@ -110,7 +200,44 @@ export const getCurrentGameWeek = async (req: Request, res: Response) => {
   }
 };
 
-// Update gameweek status (Admin only)
+// Update gameweek (Admin only)
+export const updateGameWeek = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, status, isCurrent } = req.body;
+
+    // If setting this as current, unset all others in the league
+    if (isCurrent) {
+      const gameWeek = await prisma.gameWeek.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (gameWeek) {
+        await prisma.gameWeek.updateMany({
+          where: { leagueId: gameWeek.leagueId },
+          data: { isCurrent: false }
+        });
+      }
+    }
+
+    const updateData: any = {};
+    if (startDate) updateData.startDate = new Date(startDate);
+    if (endDate) updateData.endDate = new Date(endDate);
+    if (status) updateData.status = status;
+    if (isCurrent !== undefined) updateData.isCurrent = isCurrent;
+
+    const updatedGameWeek = await prisma.gameWeek.update({
+      where: { id: parseInt(id) },
+      data: updateData
+    });
+
+    res.json({ success: true, data: updatedGameWeek });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update gameweek status (Admin only) - deprecated, use updateGameWeek instead
 export const updateGameWeekStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -200,7 +327,7 @@ export const updateStandingsSnapshot = async (req: Request, res: Response) => {
 
     const goalDifference = goalsFor - goalsAgainst;
 
-    const snapshot = await prisma.standingsSnapshot.upsert({
+    const snapshot = await prisma.tableSnapshot.upsert({
       where: {
         gameWeekId_teamId: {
           gameWeekId: parseInt(gameWeekId),
@@ -377,7 +504,6 @@ export const createMatchForGameWeek = async (req: Request, res: Response) => {
         awayTeamId: parseInt(awayTeamId),
         matchDate: new Date(matchDate),
         status: status || 'SCHEDULED',
-        venue: homeTeam.stadiumName || 'TBD',
         weekNumber: gameWeek.weekNumber,
         isPostponed: isPostponed || false
       },

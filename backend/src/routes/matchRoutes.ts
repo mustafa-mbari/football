@@ -1,10 +1,20 @@
 import { Router } from 'express';
-import { getAllMatches, getMatchById, getUpcomingMatches } from '../controllers/matchController';
+import { getAllMatches, getMatchById, getUpcomingMatches, updateMatch, deleteMatch } from '../controllers/matchController';
+import { bulkImportMatches, bulkImportMatchesByID } from '../controllers/bulkMatchController';
+import { authMiddleware, adminMiddleware } from '../middleware/auth';
 
 const router = Router();
 
 router.get('/', getAllMatches);
 router.get('/upcoming', getUpcomingMatches);
 router.get('/:id', getMatchById);
+
+// Admin routes
+router.patch('/:id', updateMatch);
+router.delete('/:id', deleteMatch);
+
+// Bulk import (admin only)
+router.post('/bulk-import', authMiddleware, adminMiddleware, bulkImportMatches);
+router.post('/bulk-import-by-id', authMiddleware, adminMiddleware, bulkImportMatchesByID);
 
 export default router;

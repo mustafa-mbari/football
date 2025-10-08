@@ -5,7 +5,7 @@ export const getStandingsByLeague = async (req: Request, res: Response) => {
   try {
     const { leagueId } = req.params;
 
-    const standings = await prisma.standing.findMany({
+    const standings = await prisma.table.findMany({
       where: { leagueId: parseInt(leagueId) },
       include: {
         team: {
@@ -27,7 +27,7 @@ export const getStandingsByLeague = async (req: Request, res: Response) => {
     });
 
     // Add position/rank to each team
-    const standingsWithRank = standings.map((standing, index) => ({
+    const standingsWithRank = standings.map((standing: any, index: number) => ({
       ...standing,
       position: index + 1
     }));
@@ -59,8 +59,8 @@ export const getAllStandings = async (req: Request, res: Response) => {
 
     // Get standings for each league
     const standingsByLeague = await Promise.all(
-      leagues.map(async (league) => {
-        const standings = await prisma.standing.findMany({
+      leagues.map(async (league: any) => {
+        const standings = await prisma.table.findMany({
           where: { leagueId: league.id },
           include: {
             team: {
@@ -83,7 +83,7 @@ export const getAllStandings = async (req: Request, res: Response) => {
 
         return {
           league,
-          standings: standings.map((standing, index) => ({
+          standings: standings.map((standing: any, index: number) => ({
             ...standing,
             position: index + 1
           }))

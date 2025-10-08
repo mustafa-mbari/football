@@ -52,7 +52,7 @@ export const syncMatch = async (req: Request, res: Response) => {
     const draw = match.homeScore === match.awayScore;
 
     // 2. Update Standings
-    const homeStanding = await prisma.standing.upsert({
+    const homeStanding = await prisma.table.upsert({
       where: {
         leagueId_teamId: {
           leagueId: match.leagueId,
@@ -84,7 +84,7 @@ export const syncMatch = async (req: Request, res: Response) => {
       }
     });
 
-    const awayStanding = await prisma.standing.upsert({
+    const awayStanding = await prisma.table.upsert({
       where: {
         leagueId_teamId: {
           leagueId: match.leagueId,
@@ -222,7 +222,7 @@ export const syncMatch = async (req: Request, res: Response) => {
     }
 
     // 4. Recalculate positions
-    const allStandings = await prisma.standing.findMany({
+    const allStandings = await prisma.table.findMany({
       where: { leagueId: match.leagueId },
       orderBy: [
         { points: 'desc' },
@@ -233,7 +233,7 @@ export const syncMatch = async (req: Request, res: Response) => {
 
     // Update positions
     for (let i = 0; i < allStandings.length; i++) {
-      await prisma.standing.update({
+      await prisma.table.update({
         where: { id: allStandings[i].id },
         data: { position: i + 1 }
       });
@@ -381,7 +381,7 @@ export const syncGameWeek = async (req: Request, res: Response) => {
         const draw = match.homeScore === match.awayScore;
 
         // Update Standings
-        await prisma.standing.upsert({
+        await prisma.table.upsert({
           where: { leagueId_teamId: { leagueId: match.leagueId, teamId: match.homeTeamId } },
           update: {
             played: { increment: 1 },
@@ -408,7 +408,7 @@ export const syncGameWeek = async (req: Request, res: Response) => {
           }
         });
 
-        await prisma.standing.upsert({
+        await prisma.table.upsert({
           where: { leagueId_teamId: { leagueId: match.leagueId, teamId: match.awayTeamId } },
           update: {
             played: { increment: 1 },
@@ -601,7 +601,7 @@ export const syncGameWeek = async (req: Request, res: Response) => {
     }
 
     // Recalculate standings positions
-    const allStandings = await prisma.standing.findMany({
+    const allStandings = await prisma.table.findMany({
       where: { leagueId: gameWeek.leagueId },
       orderBy: [
         { points: 'desc' },
@@ -611,7 +611,7 @@ export const syncGameWeek = async (req: Request, res: Response) => {
     });
 
     for (let i = 0; i < allStandings.length; i++) {
-      await prisma.standing.update({
+      await prisma.table.update({
         where: { id: allStandings[i].id },
         data: { position: i + 1 }
       });

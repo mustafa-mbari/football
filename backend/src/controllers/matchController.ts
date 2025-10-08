@@ -113,3 +113,69 @@ export const getUpcomingMatches = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateMatch = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { homeTeamId, awayTeamId, matchDate, status, homeScore, awayScore } = req.body;
+
+    const updateData: any = {};
+    if (homeTeamId !== undefined) updateData.homeTeamId = parseInt(homeTeamId);
+    if (awayTeamId !== undefined) updateData.awayTeamId = parseInt(awayTeamId);
+    if (matchDate) updateData.matchDate = new Date(matchDate);
+    if (status) updateData.status = status;
+    if (homeScore !== undefined) updateData.homeScore = homeScore;
+    if (awayScore !== undefined) updateData.awayScore = awayScore;
+
+    const match = await prisma.match.update({
+      where: { id: parseInt(id) },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        league: true
+      },
+      data: updateData
+    });
+
+    res.json({
+      success: true,
+      data: match,
+      message: 'Match updated successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const deleteMatch = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // First, delete related records
+    await prisma.prediction.deleteMany({
+      where: { matchId: parseInt(id) }
+    });
+
+    await prisma.gameWeekMatch.deleteMany({
+      where: { matchId: parseInt(id) }
+    });
+
+    // Then delete the match
+    await prisma.match.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({
+      success: true,
+      message: 'Match deleted successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

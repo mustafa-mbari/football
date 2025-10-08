@@ -109,6 +109,11 @@ export default function UpdateStandingsPage() {
                 ⚽ Manage Matches
               </Button>
             </Link>
+            <Link href="/admin/matches/bulk-import">
+              <Button variant="ghost" size="sm">
+                📋 Bulk Import
+              </Button>
+            </Link>
             <Link href="/admin/standings">
               <Button variant="default" size="sm">
                 📊 Update Standings

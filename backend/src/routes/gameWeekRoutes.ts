@@ -4,6 +4,7 @@ import {
   getGameWeeksByLeague,
   getGameWeekDetails,
   getCurrentGameWeek,
+  updateGameWeek,
   updateGameWeekStatus,
   updateTeamGameWeekStats,
   updateStandingsSnapshot,
@@ -11,7 +12,8 @@ import {
   assignMatchesToGameWeek,
   completeGameWeek,
   createMatchForGameWeek,
-  removeMatchFromGameWeek
+  removeMatchFromGameWeek,
+  syncMatchesToGameWeeks
 } from '../controllers/gameWeekController';
 
 const router = express.Router();
@@ -23,6 +25,8 @@ router.get('/league/:leagueId/current', getCurrentGameWeek);
 router.get('/:id', getGameWeekDetails);
 
 // Admin routes (would need auth middleware in production)
+router.post('/sync-matches', syncMatchesToGameWeeks);
+router.patch('/:id', updateGameWeek);
 router.patch('/:id/status', updateGameWeekStatus);
 router.put('/:id/complete', completeGameWeek);
 router.post('/:id/create-match', createMatchForGameWeek);

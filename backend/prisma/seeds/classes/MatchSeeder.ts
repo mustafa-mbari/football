@@ -12,9 +12,6 @@ interface MatchData {
   status: string;
   homeScore?: number;
   awayScore?: number;
-  htHome?: number;
-  htAway?: number;
-  minute?: number;
   week: number;
 }
 
@@ -50,8 +47,7 @@ export class MatchSeeder {
   private async createMatches(
     matchesData: MatchData[],
     leagueId: number,
-    teams: any[],
-    roundPrefix: string
+    teams: any[]
   ) {
     return await Promise.all(
       matchesData.map((match) => {
@@ -66,14 +62,9 @@ export class MatchSeeder {
             awayTeamId: awayTeam.id,
             matchDate,
             weekNumber: match.week,
-            round: `${roundPrefix} ${match.week}`,
             status: match.status as any,
             homeScore: match.homeScore,
             awayScore: match.awayScore,
-            homeHalfTimeScore: match.htHome,
-            awayHalfTimeScore: match.htAway,
-            minute: match.minute,
-            venue: homeTeam.stadiumName,
             isPredictionLocked: match.status !== 'SCHEDULED',
           },
         });
@@ -91,24 +82,21 @@ export class MatchSeeder {
     const createdPLMatches = await this.createMatches(
       this.data.premierLeague,
       premierLeague.id,
-      plTeams,
-      'Matchweek'
+      plTeams
     );
 
     // La Liga Matches
     const createdLaLigaMatches = await this.createMatches(
       this.data.laLiga,
       laLiga.id,
-      laLigaTeams,
-      'Jornada'
+      laLigaTeams
     );
 
     // Bundesliga Matches
     const createdBundesligaMatches = await this.createMatches(
       this.data.bundesliga,
       bundesliga.id,
-      bundesligaTeams,
-      'Spieltag'
+      bundesligaTeams
     );
 
     const allMatches = [
@@ -121,45 +109,4 @@ export class MatchSeeder {
     return allMatches;
   }
 
-  async seedMatchEvents(matches: any[]) {
-    console.log('\n⚡ Creating match events...');
-
-    const finishedMatches = matches.filter((m) => m.status === 'FINISHED');
-    let eventCount = 0;
-
-    for (const match of finishedMatches.slice(0, 5)) {
-      const homeScore = match.homeScore || 0;
-      const awayScore = match.awayScore || 0;
-
-      // Create goal events for home team
-      for (let i = 0; i < homeScore; i++) {
-        await prisma.matchEvent.create({
-          data: {
-            matchId: match.id,
-            type: 'GOAL',
-            minute: 15 + i * 20,
-            playerName: `Player ${i + 1}`,
-            teamSide: 'HOME',
-          },
-        });
-        eventCount++;
-      }
-
-      // Create goal events for away team
-      for (let i = 0; i < awayScore; i++) {
-        await prisma.matchEvent.create({
-          data: {
-            matchId: match.id,
-            type: 'GOAL',
-            minute: 20 + i * 25,
-            playerName: `Player ${i + 1}`,
-            teamSide: 'AWAY',
-          },
-        });
-        eventCount++;
-      }
-    }
-
-    console.log(`✅ Created ${eventCount} match events`);
-  }
 }

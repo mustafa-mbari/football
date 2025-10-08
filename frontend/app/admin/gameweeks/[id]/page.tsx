@@ -7,6 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { predictionsApi } from '@/lib/api';
 
@@ -70,6 +79,18 @@ export default function GameWeekDetailPage() {
   const [completingWeek, setCompletingWeek] = useState(false);
   const [syncingMatch, setSyncingMatch] = useState<number | null>(null);
   const [syncingWeek, setSyncingWeek] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [editForm, setEditForm] = useState({
+    homeTeamId: 0,
+    awayTeamId: 0,
+    matchDate: '',
+    status: 'SCHEDULED',
+    homeScore: null as number | null,
+    awayScore: null as number | null,
+  });
 
   useEffect(() => {
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
@@ -78,7 +99,20 @@ export default function GameWeekDetailPage() {
     }
 
     fetchGameWeek();
+    fetchTeams();
   }, [user, router, params.id]);
+
+  const fetchTeams = async () => {
+    try {
+      const response = await fetch('http://localhost:7070/api/teams');
+      if (response.ok) {
+        const data = await response.json();
+        setTeams(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    }
+  };
 
   const fetchGameWeek = async () => {
     try {
@@ -237,6 +271,86 @@ export default function GameWeekDetailPage() {
     }
   };
 
+  const handleEditMatch = (match: Match) => {
+    setSelectedMatch(match);
+    const matchDateTime = new Date(match.matchDate);
+    const localDateTime = new Date(matchDateTime.getTime() - matchDateTime.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+
+    setEditForm({
+      homeTeamId: match.homeTeam.id,
+      awayTeamId: match.awayTeam.id,
+      matchDate: localDateTime,
+      status: match.status || 'SCHEDULED',
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEditMatch = async () => {
+    if (!selectedMatch) return;
+
+    try {
+      const response = await fetch(`http://localhost:7070/api/matches/${selectedMatch.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          homeTeamId: editForm.homeTeamId,
+          awayTeamId: editForm.awayTeamId,
+          matchDate: new Date(editForm.matchDate).toISOString(),
+          status: editForm.status,
+          homeScore: editForm.homeScore,
+          awayScore: editForm.awayScore,
+        }),
+      });
+
+      if (response.ok) {
+        alert('Match updated successfully!');
+        setEditDialogOpen(false);
+        fetchGameWeek();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to update match');
+      }
+    } catch (error) {
+      alert('Failed to update match');
+      console.error(error);
+    }
+  };
+
+  const handleDeleteMatch = (match: Match) => {
+    setSelectedMatch(match);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteMatch = async () => {
+    if (!selectedMatch) return;
+
+    try {
+      const response = await fetch(`http://localhost:7070/api/matches/${selectedMatch.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        alert('Match deleted successfully!');
+        setDeleteDialogOpen(false);
+        fetchGameWeek();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to delete match');
+      }
+    } catch (error) {
+      alert('Failed to delete match');
+      console.error(error);
+    }
+  };
+
   const getLeagueFlag = (country: string): string => {
     const flags: { [key: string]: string } = {
       England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
@@ -327,6 +441,11 @@ export default function GameWeekDetailPage() {
             <Link href="/admin/matches">
               <Button variant="ghost" size="sm">
                 ⚽ Manage Matches
+              </Button>
+            </Link>
+            <Link href="/admin/matches/bulk-import">
+              <Button variant="ghost" size="sm">
+                📋 Bulk Import
               </Button>
             </Link>
             <Link href="/admin/standings">
@@ -550,7 +669,7 @@ export default function GameWeekDetailPage() {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex flex-col gap-2 min-w-[140px]">
+                          <div className="flex flex-col gap-2 min-w-[180px]">
                             {isEditing ? (
                               <>
                                 <Button onClick={() => handleUpdateScore(match.id)} size="sm" className="w-full">
@@ -575,8 +694,26 @@ export default function GameWeekDetailPage() {
                             ) : (
                               <>
                                 <Button onClick={() => setEditingMatch(match.id)} variant="outline" size="sm" className="w-full">
-                                  {hasScore ? '✏️ Edit' : '➕ Enter Score'}
+                                  {hasScore ? '📊 Edit Score' : '➕ Enter Score'}
                                 </Button>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleEditMatch(match)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                  >
+                                    ✏️ Edit
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleDeleteMatch(match)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+                                  >
+                                    🗑️ Delete
+                                  </Button>
+                                </div>
                                 {hasScore && match.status?.toUpperCase() === 'FINISHED' && (
                                   <Button
                                     onClick={() => handleSyncMatch(match.id)}
@@ -697,6 +834,157 @@ export default function GameWeekDetailPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Edit Match Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Match</DialogTitle>
+            <DialogDescription>
+              Update match details including teams, date, time, status, and scores.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="homeTeam">Home Team</Label>
+                <select
+                  id="homeTeam"
+                  value={editForm.homeTeamId}
+                  onChange={(e) => setEditForm({ ...editForm, homeTeamId: parseInt(e.target.value) })}
+                  className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
+                >
+                  <option value={0}>Select Home Team</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="awayTeam">Away Team</Label>
+                <select
+                  id="awayTeam"
+                  value={editForm.awayTeamId}
+                  onChange={(e) => setEditForm({ ...editForm, awayTeamId: parseInt(e.target.value) })}
+                  className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
+                >
+                  <option value={0}>Select Away Team</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="matchDate">Match Date & Time</Label>
+              <Input
+                id="matchDate"
+                type="datetime-local"
+                value={editForm.matchDate}
+                onChange={(e) => setEditForm({ ...editForm, matchDate: e.target.value })}
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="matchStatus">Status</Label>
+              <select
+                id="matchStatus"
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
+              >
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="LIVE">Live</option>
+                <option value="FINISHED">Finished</option>
+                <option value="POSTPONED">Postponed</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="homeScore">Home Score</Label>
+                <Input
+                  id="homeScore"
+                  type="number"
+                  min="0"
+                  value={editForm.homeScore ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, homeScore: e.target.value ? parseInt(e.target.value) : null })}
+                  placeholder="Score"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="awayScore">Away Score</Label>
+                <Input
+                  id="awayScore"
+                  type="number"
+                  min="0"
+                  value={editForm.awayScore ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, awayScore: e.target.value ? parseInt(e.target.value) : null })}
+                  placeholder="Score"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditMatch}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Match Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Match</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this match? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMatch && (
+            <div className="py-4">
+              <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {selectedMatch.homeTeam.logoUrl && (
+                    <img src={selectedMatch.homeTeam.logoUrl} alt="" className="w-6 h-6" />
+                  )}
+                  <span className="font-semibold">{selectedMatch.homeTeam.name}</span>
+                </div>
+                <span className="text-xl font-bold">vs</span>
+                <div className="flex items-center gap-2">
+                  {selectedMatch.awayTeam.logoUrl && (
+                    <img src={selectedMatch.awayTeam.logoUrl} alt="" className="w-6 h-6" />
+                  )}
+                  <span className="font-semibold">{selectedMatch.awayTeam.name}</span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 text-center">
+                {new Date(selectedMatch.matchDate).toLocaleString()}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteMatch}>
+              Delete Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

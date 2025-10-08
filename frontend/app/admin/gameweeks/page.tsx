@@ -36,6 +36,7 @@ export default function GameWeeksPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
@@ -102,6 +103,35 @@ export default function GameWeeksPage() {
     });
   };
 
+  const handleSyncMatches = async (leagueId?: number) => {
+    setSyncing(true);
+    try {
+      const response = await fetch('http://localhost:7070/api/gameweeks/sync-matches', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leagueId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ ${data.message}\n\nSynced: ${data.stats.synced}\nSkipped: ${data.stats.skipped}`);
+        // Refresh gameweeks to show updated match counts
+        await fetchGameWeeks();
+      } else {
+        const error = await response.json();
+        alert(`Failed to sync matches: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      alert('Failed to sync matches');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
     return null;
   }
@@ -125,6 +155,11 @@ export default function GameWeeksPage() {
             <Link href="/admin/matches">
               <Button variant="ghost" size="sm">
                 ⚽ Manage Matches
+              </Button>
+            </Link>
+            <Link href="/admin/matches/bulk-import">
+              <Button variant="ghost" size="sm">
+                📋 Bulk Import
               </Button>
             </Link>
             <Link href="/admin/standings">
@@ -165,9 +200,19 @@ export default function GameWeeksPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{league.name} - {league.season}</span>
-                      <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
-                        {gameWeeks.filter(gw => gw.league.id === league.id).length} gameweeks
-                      </span>
+                      <div className="flex items-center gap-4">
+                        <Button
+                          onClick={() => handleSyncMatches(league.id)}
+                          disabled={syncing}
+                          size="sm"
+                          variant="outline"
+                        >
+                          {syncing ? 'Syncing...' : '🔄 Sync Matches to GameWeeks'}
+                        </Button>
+                        <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
+                          {gameWeeks.filter(gw => gw.league.id === league.id).length} gameweeks
+                        </span>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -208,13 +253,22 @@ export default function GameWeeksPage() {
                                 <td className="py-3 px-4 text-center">{gameWeek._count.matches}</td>
                                 <td className="py-3 px-4 text-center">{gameWeek._count.teamStats}</td>
                                 <td className="py-3 px-4 text-center">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => router.push(`/admin/gameweeks/${gameWeek.id}`)}
-                                  >
-                                    Manage
-                                  </Button>
+                                  <div className="flex gap-2 justify-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => router.push(`/admin/gameweeks/${gameWeek.id}/edit`)}
+                                    >
+                                      ✏️ Edit
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => router.push(`/admin/gameweeks/${gameWeek.id}`)}
+                                    >
+                                      Manage
+                                    </Button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}

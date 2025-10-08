@@ -117,8 +117,8 @@ export async function seedTeamGameWeekStats() {
   }
 }
 
-export async function seedStandingsSnapshots() {
-  console.log('📸 Creating standings snapshots...');
+export async function seedTableSnapshots() {
+  console.log('📸 Creating table snapshots...');
 
   try {
     // For now, just create empty snapshots for completed gameweeks
@@ -138,7 +138,7 @@ export async function seedStandingsSnapshots() {
       for (let position = 1; position <= gameWeek.league.teams.length; position++) {
         const team = gameWeek.league.teams[position - 1];
 
-        await prisma.standingsSnapshot.create({
+        await prisma.tableSnapshot.create({
           data: {
             gameWeekId: gameWeek.id,
             teamId: team.id,
@@ -158,10 +158,10 @@ export async function seedStandingsSnapshots() {
       }
     }
 
-    console.log(`✅ Created ${snapshotCount} standings snapshots\n`);
+    console.log(`✅ Created ${snapshotCount} table snapshots\n`);
     return snapshotCount;
   } catch (error) {
-    console.error('❌ Error seeding standings snapshots:', error);
+    console.error('❌ Error seeding table snapshots:', error);
     throw error;
   }
 }
