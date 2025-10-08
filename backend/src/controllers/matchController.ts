@@ -119,6 +119,18 @@ export const updateMatch = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { homeTeamId, awayTeamId, matchDate, status, homeScore, awayScore } = req.body;
 
+    // Get the current match to check if it was synced
+    const currentMatch = await prisma.match.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!currentMatch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Match not found'
+      });
+    }
+
     const updateData: any = {};
     if (homeTeamId !== undefined) updateData.homeTeamId = parseInt(homeTeamId);
     if (awayTeamId !== undefined) updateData.awayTeamId = parseInt(awayTeamId);
@@ -126,6 +138,15 @@ export const updateMatch = async (req: Request, res: Response) => {
     if (status) updateData.status = status;
     if (homeScore !== undefined) updateData.homeScore = homeScore;
     if (awayScore !== undefined) updateData.awayScore = awayScore;
+
+    // If the match was synced and scores are being changed, mark as unsynced
+    // so it can be re-synced with the new scores
+    const scoresChanged = (homeScore !== undefined && homeScore !== currentMatch.homeScore) ||
+                         (awayScore !== undefined && awayScore !== currentMatch.awayScore);
+
+    if (currentMatch.isSynced && scoresChanged) {
+      updateData.isSynced = false;
+    }
 
     const match = await prisma.match.update({
       where: { id: parseInt(id) },
@@ -137,10 +158,15 @@ export const updateMatch = async (req: Request, res: Response) => {
       data: updateData
     });
 
+    let message = 'Match updated successfully';
+    if (currentMatch.isSynced && scoresChanged) {
+      message += '. Match marked as unsynced - please sync again to update tables.';
+    }
+
     res.json({
       success: true,
       data: match,
-      message: 'Match updated successfully'
+      message
     });
   } catch (error: any) {
     res.status(500).json({

@@ -49,6 +49,7 @@ export default function UpdateStandingsPage() {
   const [standingsData, setStandingsData] = useState<LeagueStanding[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
@@ -72,6 +73,35 @@ export default function UpdateStandingsPage() {
       console.error('Error fetching standings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRecalculate = async (leagueId: number) => {
+    const confirmed = confirm(
+      'This will recalculate standings from scratch based on all finished matches. Continue?'
+    );
+    if (!confirmed) return;
+
+    try {
+      setRecalculating(true);
+      const response = await fetch(`http://localhost:7070/api/tables/recalculate/${leagueId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message ||'Standings recalculated successfully!');
+        await fetchStandings();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to recalculate standings');
+      }
+    } catch (error) {
+      alert('Failed to recalculate standings');
+      console.error(error);
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -159,7 +189,18 @@ export default function UpdateStandingsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{leagueData.league.name} - {leagueData.league.season}</span>
-                      <span className="text-3xl">{getLeagueFlag(leagueData.league.country)}</span>
+                      <div className="flex items-center gap-4">
+                        <Button
+                          onClick={() => handleRecalculate(leagueData.league.id)}
+                          disabled={recalculating}
+                          variant="outline"
+                          size="sm"
+                          className="border-green-500 text-green-600 hover:bg-green-50"
+                        >
+                          {recalculating ? 'Recalculating...' : '🔄 Recalculate Tables'}
+                        </Button>
+                        <span className="text-3xl">{getLeagueFlag(leagueData.league.country)}</span>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
