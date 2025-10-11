@@ -90,4 +90,19 @@ export class SystemDataSeeder {
     await prisma.auditLog.createMany({ data: auditLogsData });
     console.log('✅ Created audit logs');
   }
+
+  async seedAppSettings() {
+    console.log('\n⚙️  Creating app settings...');
+
+    const settingsData = [
+      {
+        key: 'PREDICTION_DEADLINE_HOURS',
+        value: '4',
+        description: 'Hours before match start when predictions are locked'
+      }
+    ];
+
+    await prisma.appSettings.createMany({ data: settingsData });
+    console.log('✅ Created app settings');
+  }
 }

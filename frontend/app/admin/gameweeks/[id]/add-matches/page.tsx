@@ -123,6 +123,10 @@ export default function AddMatchesPage() {
       setCreating(true);
       setSuccessMessage('');
 
+      // Get team names for success message
+      const homeTeam = teams.find(t => t.id === parseInt(homeTeamId));
+      const awayTeam = teams.find(t => t.id === parseInt(awayTeamId));
+
       // Combine date and time
       const dateTimeString = `${matchDate}T${matchTime}:00`;
 
@@ -143,7 +147,7 @@ export default function AddMatchesPage() {
 
       if (response.ok) {
         if (addAnother) {
-          setSuccessMessage('Match created successfully! Add another one below.');
+          setSuccessMessage(`Match created: ${homeTeam?.name} vs ${awayTeam?.name}. Add another one below.`);
           resetForm();
           // Scroll to top to see success message
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -254,24 +258,12 @@ export default function AddMatchesPage() {
 
         {/* Success Message */}
         {successMessage && (
-          <Card className="mb-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-            <CardContent className="pt-6">
-              <p className="text-green-900 dark:text-green-300 font-medium">
-                ✓ {successMessage}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Info Card */}
-        <Card className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-6">
-            <p className="text-blue-900 dark:text-blue-300">
-              <strong>Note:</strong> The match will be automatically assigned to Week {gameWeek.weekNumber}.
-              League and venue will be auto-filled based on the home team's stadium.
+          <div className="mb-3 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 rounded-lg border px-3 py-2 shadow-sm">
+            <p className="text-sm text-green-900 dark:text-green-300 font-medium">
+              ✓ {successMessage}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
         {/* Create Match Form */}
         <Card>

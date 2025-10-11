@@ -231,27 +231,27 @@ export default function GameWeekDetailPage() {
 
   const handleSyncWeek = async () => {
     const confirmed = confirm(
-      'Sync all finished matches in this week? This will update standings and calculate all prediction points.'
+      'Re-sync all matches in this gameweek? This will reset and recalculate all table data from scratch based on current match scores.\n\n⚠️ This will update the league tables with fresh data.'
     );
     if (!confirmed) return;
 
     try {
       setSyncingWeek(true);
-      const response = await fetch(`http://localhost:7070/api/sync/gameweek/${params.id}`, {
+      const response = await fetch(`http://localhost:7070/api/sync/resync/gameweek/${params.id}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(data.message || 'GameWeek synced successfully!');
+        alert(data.message || 'GameWeek re-synced successfully!');
         fetchGameWeek();
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to sync gameweek');
+        alert(data.message || 'Failed to re-sync gameweek');
       }
     } catch (error) {
-      alert('Failed to sync gameweek');
+      alert('Failed to re-sync gameweek');
       console.error(error);
     } finally {
       setSyncingWeek(false);
@@ -566,7 +566,7 @@ export default function GameWeekDetailPage() {
                 variant="outline"
                 className="border-purple-500 text-purple-600 hover:bg-purple-50"
               >
-                {syncingWeek ? 'Syncing...' : '🔄 Sync All Matches'}
+                {syncingWeek ? 'Re-syncing...' : '🔄 Re-Sync Matches to Tables'}
               </Button>
               {!isCompleted && allMatchesHaveScores && (
                 <Button

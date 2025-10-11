@@ -72,3 +72,19 @@ export const standingsApi = {
   getAll: () => api.get('/standings'),
   getByLeague: (leagueId: number) => api.get(`/standings/league/${leagueId}`)
 };
+
+// Settings API
+export const settingsApi = {
+  getSetting: (key: string) => api.get(`/settings/${key}`),
+  getAllSettings: () => api.get('/settings'),
+  updateSetting: (key: string, data: { value: string; description?: string }) =>
+    api.put(`/settings/${key}`, data)
+};
+
+// GameWeeks API
+export const gameWeeksApi = {
+  getAll: () => api.get('/gameweeks'),
+  getByLeague: (leagueId: number) => api.get(`/gameweeks/league/${leagueId}`),
+  getCurrentByStatus: (leagueId: number) => api.get(`/gameweeks/league/${leagueId}/current-by-status`),
+  getDetails: (id: number) => api.get(`/gameweeks/${id}`)
+};

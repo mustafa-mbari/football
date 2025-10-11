@@ -16,6 +16,7 @@ import weekRoutes from './routes/weekRoutes';
 import standingRoutes from './routes/standingRoutes';
 import gameWeekRoutes from './routes/gameWeekRoutes';
 import syncRoutes from './routes/syncRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use('/api/weeks', weekRoutes);
 app.use('/api/standings', standingRoutes);
 app.use('/api/gameweeks', gameWeekRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

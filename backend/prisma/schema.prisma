@@ -480,6 +480,18 @@ model PointsRule {
   @@index([isActive])
 }
 
+// ==================== SETTINGS ====================
+model AppSettings {
+  id                        Int      @id @default(autoincrement())
+  key                       String   @unique
+  value                     String
+  description               String?  @db.Text
+  updatedAt                 DateTime @updatedAt
+  createdAt                 DateTime @default(now())
+
+  @@index([key])
+}
+
 // ==================== AUDIT & ANALYTICS ====================
 model AuditLog {
   id         Int      @id @default(autoincrement())

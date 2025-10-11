@@ -63,6 +63,7 @@ async function main() {
     await systemDataSeeder.seedPointsRules();
     await systemDataSeeder.seedAnalytics();
     await systemDataSeeder.seedAuditLogs(users);
+    await systemDataSeeder.seedAppSettings();
 
     console.log('\n🎉 Seeding completed successfully!');
     console.log('\n📊 Summary:');

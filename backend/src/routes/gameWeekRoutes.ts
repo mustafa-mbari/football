@@ -4,6 +4,7 @@ import {
   getGameWeeksByLeague,
   getGameWeekDetails,
   getCurrentGameWeek,
+  getCurrentGameWeekByStatus,
   updateGameWeek,
   updateGameWeekStatus,
   updateTeamGameWeekStats,
@@ -15,14 +16,24 @@ import {
   removeMatchFromGameWeek,
   syncMatchesToGameWeeks
 } from '../controllers/gameWeekController';
+import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
+
+// Optional auth middleware - adds userId if logged in but doesn't require it
+const optionalAuth = (req: any, res: any, next: any) => {
+  authMiddleware(req, res, (err?: any) => {
+    // Continue even if auth fails
+    next();
+  });
+};
 
 // Public routes
 router.get('/', getAllGameWeeks);
 router.get('/league/:leagueId', getGameWeeksByLeague);
 router.get('/league/:leagueId/current', getCurrentGameWeek);
-router.get('/:id', getGameWeekDetails);
+router.get('/league/:leagueId/current-by-status', optionalAuth, getCurrentGameWeekByStatus);
+router.get('/:id', optionalAuth, getGameWeekDetails);
 
 // Admin routes (would need auth middleware in production)
 router.post('/sync-matches', syncMatchesToGameWeeks);
