@@ -13,6 +13,7 @@ interface League {
   name: string;
   country: string;
   season: string;
+  logoUrl?: string;
 }
 
 interface GameWeek {
@@ -76,13 +77,17 @@ function GameWeeksContent() {
     }
   };
 
-  const getLeagueFlag = (country: string): string => {
-    const flags: { [key: string]: string } = {
-      England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      Germany: '🇩🇪',
-      Spain: '🇪🇸',
-    };
-    return flags[country] || '⚽';
+  const getLeagueLogo = (league: League) => {
+    if (league.logoUrl) {
+      return (
+        <img
+          src={league.logoUrl}
+          alt={league.name}
+          className="w-6 h-6 object-contain inline-block"
+        />
+      );
+    }
+    return null;
   };
 
   const getStatusBadge = (status: string) => {
@@ -199,7 +204,7 @@ function GameWeeksContent() {
             <TabsList className="grid w-full grid-cols-3 mb-8">
               {leagues.map((league) => (
                 <TabsTrigger key={league.id} value={league.id.toString()}>
-                  <span className="mr-2">{getLeagueFlag(league.country)}</span>
+                  <span className="mr-2">{getLeagueLogo(league)}</span>
                   {league.name}
                 </TabsTrigger>
               ))}
