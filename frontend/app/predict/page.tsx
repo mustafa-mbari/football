@@ -37,13 +37,17 @@ function PredictContent() {
     fetchLeagues();
   }, []);
 
-  const getLeagueFlag = (country: string): string => {
-    const flags: { [key: string]: string } = {
-      England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      Germany: '🇩🇪',
-      Spain: '🇪🇸',
-    };
-    return flags[country] || '⚽';
+  const getLeagueLogo = (league: League) => {
+    if (league.logoUrl) {
+      return (
+        <img
+          src={league.logoUrl}
+          alt={league.name}
+          className="w-12 h-12 object-contain"
+        />
+      );
+    }
+    return null;
   };
 
   return (
@@ -77,7 +81,7 @@ function PredictContent() {
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
                         <span>{league.name}</span>
-                        <span className="text-3xl">{getLeagueFlag(league.country)}</span>
+                        {getLeagueLogo(league)}
                       </CardTitle>
                       <CardDescription>
                         {league.country} • {league.season}
