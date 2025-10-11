@@ -103,7 +103,7 @@ export const getGameWeeksByLeague = async (req: Request, res: Response) => {
       orderBy: { weekNumber: 'asc' },
       include: {
         league: {
-          select: { id: true, name: true, country: true, season: true }
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
         },
         _count: {
           select: { matches: true }
@@ -542,7 +542,7 @@ export const getAllGameWeeks = async (req: Request, res: Response) => {
     const gameWeeks = await prisma.gameWeek.findMany({
       include: {
         league: {
-          select: { id: true, name: true, country: true, season: true }
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
         },
         _count: {
           select: { matches: true, teamStats: true }
