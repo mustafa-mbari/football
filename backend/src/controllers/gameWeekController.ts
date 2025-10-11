@@ -121,18 +121,41 @@ export const getGameWeeksByLeague = async (req: Request, res: Response) => {
 export const getGameWeekDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
 
     const gameWeek = await prisma.gameWeek.findUnique({
       where: { id: parseInt(id) },
       include: {
-        league: true,
+        league: {
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
+        },
         matches: {
           include: {
             match: {
               include: {
-                homeTeam: true,
-                awayTeam: true
+                homeTeam: {
+                  select: { id: true, name: true, shortName: true, logoUrl: true }
+                },
+                awayTeam: {
+                  select: { id: true, name: true, shortName: true, logoUrl: true }
+                },
+                predictions: userId ? {
+                  where: {
+                    userId: userId
+                  },
+                  select: {
+                    id: true,
+                    predictedHomeScore: true,
+                    predictedAwayScore: true,
+                    totalPoints: true
+                  }
+                } : false
               }
+            }
+          },
+          orderBy: {
+            match: {
+              matchDate: 'asc'
             }
           }
         },
@@ -151,6 +174,9 @@ export const getGameWeekDetails = async (req: Request, res: Response) => {
             }
           },
           orderBy: { position: 'asc' }
+        },
+        _count: {
+          select: { matches: true }
         }
       }
     });
@@ -192,6 +218,125 @@ export const getCurrentGameWeek = async (req: Request, res: Response) => {
 
     if (!currentGameWeek) {
       return res.status(404).json({ success: false, message: 'No current gameweek found' });
+    }
+
+    res.json({ success: true, data: currentGameWeek });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get current gameweek by status (IN_PROGRESS, then SCHEDULED)
+export const getCurrentGameWeekByStatus = async (req: Request, res: Response) => {
+  try {
+    const { leagueId } = req.params;
+    const userId = (req as any).userId;
+
+    // First, try to find an IN_PROGRESS gameweek
+    let currentGameWeek = await prisma.gameWeek.findFirst({
+      where: {
+        leagueId: parseInt(leagueId),
+        status: 'IN_PROGRESS'
+      },
+      include: {
+        league: {
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
+        },
+        matches: {
+          include: {
+            match: {
+              include: {
+                homeTeam: {
+                  select: { id: true, name: true, shortName: true, logoUrl: true }
+                },
+                awayTeam: {
+                  select: { id: true, name: true, shortName: true, logoUrl: true }
+                },
+                predictions: userId ? {
+                  where: {
+                    userId: userId
+                  },
+                  select: {
+                    id: true,
+                    predictedHomeScore: true,
+                    predictedAwayScore: true,
+                    totalPoints: true
+                  }
+                } : false
+              }
+            }
+          },
+          orderBy: {
+            match: {
+              matchDate: 'asc'
+            }
+          }
+        },
+        _count: {
+          select: { matches: true }
+        }
+      },
+      orderBy: {
+        weekNumber: 'asc'
+      }
+    });
+
+    // If no IN_PROGRESS, get the next SCHEDULED gameweek
+    if (!currentGameWeek) {
+      currentGameWeek = await prisma.gameWeek.findFirst({
+        where: {
+          leagueId: parseInt(leagueId),
+          status: 'SCHEDULED'
+        },
+        include: {
+          league: {
+            select: { id: true, name: true, country: true, season: true, logoUrl: true }
+          },
+          matches: {
+            include: {
+              match: {
+                include: {
+                  homeTeam: {
+                    select: { id: true, name: true, shortName: true, logoUrl: true }
+                  },
+                  awayTeam: {
+                    select: { id: true, name: true, shortName: true, logoUrl: true }
+                  },
+                  predictions: userId ? {
+                    where: {
+                      userId: userId
+                    },
+                    select: {
+                      id: true,
+                      predictedHomeScore: true,
+                      predictedAwayScore: true,
+                      totalPoints: true
+                    }
+                  } : false
+                }
+              }
+            },
+            orderBy: {
+              match: {
+                matchDate: 'asc'
+              }
+            }
+          },
+          _count: {
+            select: { matches: true }
+          }
+        },
+        orderBy: {
+          weekNumber: 'asc'
+        }
+      });
+    }
+
+    if (!currentGameWeek) {
+      return res.status(404).json({
+        success: false,
+        message: 'No current or scheduled gameweek found'
+      });
     }
 
     res.json({ success: true, data: currentGameWeek });

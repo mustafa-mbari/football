@@ -6,33 +6,56 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { leaguesApi, predictionsApi, weeksApi } from '@/lib/api';
+import { api, settingsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface Team {
   id: number;
   name: string;
+  shortName?: string;
+  logoUrl?: string;
 }
 
 interface UserPrediction {
   id: number;
   predictedHomeScore: number;
   predictedAwayScore: number;
-  points: number | null;
+  totalPoints: number | null;
 }
 
 interface Match {
   id: number;
   matchDate: string;
   status: string;
-  homeScore?: number;
-  awayScore?: number;
-  round?: string;
+  homeScore?: number | null;
+  awayScore?: number | null;
   homeTeam: Team;
   awayTeam: Team;
   predictions?: UserPrediction[];
+}
+
+interface GameWeekMatch {
+  match: Match;
+}
+
+interface GameWeek {
+  id: number;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  league: {
+    id: number;
+    name: string;
+    country: string;
+    season: string;
+    logoUrl?: string;
+  };
+  matches: GameWeekMatch[];
+  _count: {
+    matches: number;
+  };
 }
 
 interface League {
@@ -40,12 +63,7 @@ interface League {
   name: string;
   country: string;
   season: string;
-}
-
-interface WeekOption {
-  week: number;
-  label: string;
-  count: number;
+  logoUrl?: string;
 }
 
 function LeagueContent() {
@@ -53,50 +71,82 @@ function LeagueContent() {
   const router = useRouter();
   const { user } = useAuth();
   const [league, setLeague] = useState<League | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [availableWeeks, setAvailableWeeks] = useState<WeekOption[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [currentGameWeek, setCurrentGameWeek] = useState<GameWeek | null>(null);
+  const [allGameWeeks, setAllGameWeeks] = useState<GameWeek[]>([]);
+  const [selectedGameWeekId, setSelectedGameWeekId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [predictions, setPredictions] = useState<{ [key: number]: { home: string; away: string } }>({});
+  const [predictionDeadlineHours, setPredictionDeadlineHours] = useState(4);
+  const [editingMatchId, setEditingMatchId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [leagueResponse, weeksResponse] = await Promise.all([
-          leaguesApi.getById(parseInt(params.id as string)),
-          weeksApi.getAvailableWeeks(parseInt(params.id as string))
-        ]);
-
-        setLeague(leagueResponse.data.data);
-        setAvailableWeeks(weeksResponse.data.data);
-
-        // Set default week (first available week or week 1)
-        const defaultWeek = weeksResponse.data.data[0]?.week || 1;
-        setSelectedWeek(defaultWeek);
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchInitialData();
   }, [params.id]);
 
-  useEffect(() => {
-    const fetchWeekMatches = async () => {
-      if (!league) return;
+  const fetchInitialData = async () => {
+    try {
+      // Fetch league details
+      const leagueResponse = await api.get(`/leagues/${params.id}`);
+      setLeague(leagueResponse.data.data);
 
+      // Fetch prediction deadline setting
       try {
-        const response = await weeksApi.getMatchesByWeek(league.id, selectedWeek);
-        setMatches(response.data.data.matches);
+        const settingResponse = await settingsApi.getSetting('PREDICTION_DEADLINE_HOURS');
+        setPredictionDeadlineHours(parseInt(settingResponse.data.data.value));
       } catch (error) {
-        console.error('Error fetching week matches:', error);
+        console.log('Using default deadline: 4 hours');
       }
-    };
 
-    fetchWeekMatches();
-  }, [league, selectedWeek]);
+      // Fetch current gameweek by status
+      try {
+        const gameWeekResponse = await api.get(`/gameweeks/league/${params.id}/current-by-status`);
+        setCurrentGameWeek(gameWeekResponse.data.data);
+        setSelectedGameWeekId(gameWeekResponse.data.data.id);
+      } catch (error) {
+        console.log('No current gameweek found');
+      }
+
+      // Fetch all gameweeks for selector
+      const allGameWeeksResponse = await api.get(`/gameweeks/league/${params.id}`);
+      setAllGameWeeks(allGameWeeksResponse.data.data);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGameWeekDetails = async (gameWeekId: number) => {
+    try {
+      const response = await api.get(`/gameweeks/${gameWeekId}`);
+      setCurrentGameWeek(response.data.data);
+    } catch (error) {
+      console.error('Error fetching gameweek details:', error);
+    }
+  };
+
+  const handleGameWeekChange = (gameWeekId: number) => {
+    setSelectedGameWeekId(gameWeekId);
+    fetchGameWeekDetails(gameWeekId);
+  };
+
+  const isPredictionLocked = (matchDate: string): boolean => {
+    const now = new Date();
+    const kickoff = new Date(matchDate);
+    const hoursDifference = (kickoff.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursDifference < predictionDeadlineHours;
+  };
+
+  const getDeadlineTime = (matchDate: string): string => {
+    const kickoff = new Date(matchDate);
+    const deadline = new Date(kickoff.getTime() - predictionDeadlineHours * 60 * 60 * 1000);
+    return deadline.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const handlePredictionChange = (matchId: number, team: 'home' | 'away', value: string) => {
     setPredictions((prev) => ({
@@ -106,6 +156,19 @@ function LeagueContent() {
         [team]: value
       }
     }));
+  };
+
+  const handleChangeClick = (matchId: number, userPrediction?: UserPrediction) => {
+    setEditingMatchId(matchId);
+    if (userPrediction) {
+      setPredictions(prev => ({
+        ...prev,
+        [matchId]: {
+          home: userPrediction.predictedHomeScore.toString(),
+          away: userPrediction.predictedAwayScore.toString()
+        }
+      }));
+    }
   };
 
   const handleSubmitPrediction = async (matchId: number) => {
@@ -121,167 +184,342 @@ function LeagueContent() {
     }
 
     try {
-      await predictionsApi.create({
+      await api.post('/predictions', {
         matchId,
         predictedHomeScore: parseInt(prediction.home),
         predictedAwayScore: parseInt(prediction.away)
       });
       alert('Prediction saved!');
 
-      // Refresh matches to show the updated prediction
-      const response = await weeksApi.getMatchesByWeek(league!.id, selectedWeek);
-      setMatches(response.data.data.matches);
+      // Refresh gameweek data
+      if (selectedGameWeekId) {
+        fetchGameWeekDetails(selectedGameWeekId);
+      }
 
-      // Clear input fields
+      // Clear input fields and exit edit mode
       setPredictions(prev => {
         const newPredictions = { ...prev };
         delete newPredictions[matchId];
         return newPredictions;
       });
+      setEditingMatchId(null);
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to save prediction');
     }
   };
 
+  const getTeamLogo = (team: Team) => {
+    if (team.logoUrl) {
+      return (
+        <img
+          src={team.logoUrl}
+          alt={team.name}
+          className="w-8 h-8 object-contain"
+        />
+      );
+    }
+    return null;
+  };
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!league) {
-    return <div className="min-h-screen flex items-center justify-center">League not found</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <p className="text-slate-600 dark:text-slate-400">League not found</p>
+      </div>
+    );
   }
+
+  const matches = currentGameWeek?.matches || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{league.name}</h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              {league.country} • {league.season}
-            </p>
+        <div className="mb-8 flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            {league.logoUrl && (
+              <img src={league.logoUrl} alt={league.name} className="w-16 h-16 object-contain" />
+            )}
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{league.name}</h2>
+              <p className="text-slate-600 dark:text-slate-400">
+                {league.country} • {league.season}
+              </p>
+            </div>
           </div>
 
-          {availableWeeks.length > 0 && (
+          {allGameWeeks.length > 0 && (
             <div className="w-64">
-              <Select value={selectedWeek.toString()} onValueChange={(value) => setSelectedWeek(parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select week" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableWeeks.map((week) => (
-                    <SelectItem key={week.week} value={week.week.toString()}>
-                      {week.label} ({week.count} matches)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Select GameWeek
+              </label>
+              <select
+                value={selectedGameWeekId || ''}
+                onChange={(e) => handleGameWeekChange(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                {allGameWeeks.map((gw) => (
+                  <option key={gw.id} value={gw.id}>
+                    Week {gw.weekNumber} - {gw.status} ({gw._count.matches} matches)
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
 
+        {currentGameWeek && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
+              GameWeek {currentGameWeek.weekNumber}
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-400">
+              Status: <strong>{currentGameWeek.status}</strong> • {currentGameWeek._count.matches} matches
+            </p>
+          </div>
+        )}
+
         <div className="space-y-4">
           {matches.length === 0 ? (
-            <p className="text-center text-slate-600 dark:text-slate-400">No matches in this week</p>
+            <p className="text-center text-slate-600 dark:text-slate-400">No matches in this gameweek</p>
           ) : (
-            matches.map((match) => {
+            matches.map(({ match }) => {
               const userPrediction = match.predictions?.[0];
-              const isFinished = match.status === 'finished';
-              const canPredict = !isFinished && new Date(match.matchDate) > new Date();
+              const isFinished = match.status === 'FINISHED';
+              const isLocked = isPredictionLocked(match.matchDate);
+              const canPredict = !isFinished && !isLocked;
+              const isEditing = editingMatchId === match.id;
 
               return (
-                <Card key={match.id}>
+                <Card key={match.id} className={isLocked && !isFinished ? 'border-orange-300 dark:border-orange-700' : ''}>
                   <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
                       <CardDescription>
-                        {match.round} • {new Date(match.matchDate).toLocaleDateString()} {new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(match.matchDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}{' '}
+                        {new Date(match.matchDate).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </CardDescription>
-                      {isFinished && (
-                        <Badge variant="secondary">Finished</Badge>
-                      )}
+                      <div className="flex gap-2">
+                        {isFinished && <Badge variant="secondary">Finished</Badge>}
+                        {isLocked && !isFinished && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                            Locked
+                          </Badge>
+                        )}
+                        {canPredict && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                            Open
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+                    {!isFinished && (
+                      <CardDescription className="text-xs">
+                        Predictions close: {getDeadlineTime(match.matchDate)}
+                      </CardDescription>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {/* Match Display */}
                       <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 text-right">
-                          <p className="font-semibold">{match.homeTeam.name}</p>
+                        {/* Home Team */}
+                        <div className="flex-1 flex items-center justify-end gap-3">
+                          <p className="font-semibold text-right">{match.homeTeam.name}</p>
+                          {getTeamLogo(match.homeTeam)}
                         </div>
 
-                        {isFinished ? (
-                          <div className="px-8">
-                            <Badge variant="default" className="text-lg px-4 py-1">
-                              {match.homeScore} - {match.awayScore}
-                            </Badge>
-                          </div>
-                        ) : canPredict ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              className="w-16 text-center"
-                              placeholder="0"
-                              value={predictions[match.id]?.home || ''}
-                              onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
-                            />
-                            <span className="text-xl font-bold">-</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              className="w-16 text-center"
-                              placeholder="0"
-                              value={predictions[match.id]?.away || ''}
-                              onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
-                            />
-                          </div>
-                        ) : (
-                          <div className="px-8">
-                            <span className="text-xl font-bold">vs</span>
-                          </div>
-                        )}
+                        {/* Score/Input Section */}
+                        <div className="flex flex-col items-center gap-2">
+                          {/* Real Result - show for all matches */}
+                          {isFinished ? (
+                            <div className="text-lg font-bold text-green-700 dark:text-green-500">
+                              {match.homeScore ?? 0} - {match.awayScore ?? 0}
+                            </div>
+                          ) : match.homeScore !== null && match.homeScore !== undefined ? (
+                            <div className="text-lg font-bold text-green-700 dark:text-green-500">
+                              {match.homeScore} - {match.awayScore ?? 0}
+                            </div>
+                          ) : (
+                            <div className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                              ? - ?
+                            </div>
+                          )}
 
-                        <div className="flex-1">
+                          {/* Your Prediction Section */}
+                          {canPredict ? (
+                            <div className="flex flex-col items-center gap-1">
+                              {isEditing ? (
+                                <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                                  Your Prediction:
+                                </span>
+                              ) : (
+                                <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                                  Your Prediction:
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                {isEditing ? (
+                                  <>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      className="w-16 text-center text-orange-600 dark:text-orange-400 font-semibold"
+                                      placeholder="0"
+                                      value={predictions[match.id]?.home || ''}
+                                      onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
+                                    />
+                                    <span className="text-xl font-bold text-orange-600 dark:text-orange-400">-</span>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      className="w-16 text-center text-orange-600 dark:text-orange-400 font-semibold"
+                                      placeholder="0"
+                                      value={predictions[match.id]?.away || ''}
+                                      onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
+                                    />
+                                  </>
+                                ) : userPrediction ? (
+                                  <>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
+                                        {userPrediction.predictedHomeScore}
+                                      </span>
+                                    </div>
+                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
+                                        {userPrediction.predictedAwayScore}
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    </div>
+                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ) : !isFinished ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                                Your Prediction:
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {userPrediction ? (
+                                  <>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
+                                        {userPrediction.predictedHomeScore}
+                                      </span>
+                                    </div>
+                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
+                                        {userPrediction.predictedAwayScore}
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    </div>
+                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Away Team */}
+                        <div className="flex-1 flex items-center gap-3">
+                          {getTeamLogo(match.awayTeam)}
                           <p className="font-semibold">{match.awayTeam.name}</p>
                         </div>
 
+                        {/* Predict Button */}
                         {canPredict && (
-                          <Button onClick={() => handleSubmitPrediction(match.id)}>
-                            Predict
+                          <Button
+                            onClick={() => {
+                              if (isEditing) {
+                                handleSubmitPrediction(match.id);
+                              } else {
+                                handleChangeClick(match.id, userPrediction);
+                              }
+                            }}
+                            className="ml-4"
+                          >
+                            {isEditing ? 'Update' : userPrediction ? 'Change' : 'Predict'}
                           </Button>
                         )}
                       </div>
 
-                      {/* User Prediction Display */}
-                      {userPrediction && (
+                      {/* User Prediction Display - Only show when finished */}
+                      {userPrediction && isFinished && (
                         <div className="border-t pt-4 space-y-2">
                           <div className="flex justify-between items-center text-sm">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">Your Prediction:</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              Your Prediction:
+                            </span>
                             <div className="flex items-center gap-4">
-                              <span className="font-semibold">
+                              <span className="font-semibold text-lg text-green-700 dark:text-green-500">
                                 {userPrediction.predictedHomeScore} - {userPrediction.predictedAwayScore}
                               </span>
-                              {isFinished && userPrediction.points !== null && (
+                              {userPrediction.totalPoints !== null && (
                                 <Badge
                                   variant={
-                                    userPrediction.points === 3 ? 'default' :
-                                    userPrediction.points === 1 ? 'secondary' :
+                                    userPrediction.totalPoints >= 8 ? 'default' :
+                                    userPrediction.totalPoints >= 3 ? 'secondary' :
                                     'destructive'
                                   }
                                 >
-                                  {userPrediction.points} {userPrediction.points === 1 ? 'point' : 'points'}
+                                  {userPrediction.totalPoints} points
                                 </Badge>
                               )}
                             </div>
                           </div>
 
-                          {isFinished && (
+                          {userPrediction.totalPoints !== null && (
                             <div className="text-xs text-slate-600 dark:text-slate-400">
-                              {userPrediction.points === 3 && '🎯 Exact score! Perfect prediction!'}
-                              {userPrediction.points === 1 && '✓ Correct outcome! Good prediction!'}
-                              {userPrediction.points === 0 && '✗ Incorrect prediction'}
+                              {userPrediction.totalPoints >= 8 && '🎯 Exact score! Perfect prediction!'}
+                              {userPrediction.totalPoints >= 3 && userPrediction.totalPoints < 8 && '✓ Correct outcome! Good prediction!'}
+                              {userPrediction.totalPoints === 0 && '✗ Incorrect prediction'}
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Show message if no prediction and locked */}
+                      {!userPrediction && !canPredict && !isFinished && (
+                        <div className="border-t pt-4 text-sm text-center text-slate-500 dark:text-slate-400">
+                          No prediction made (0 - 0)
                         </div>
                       )}
                     </div>
