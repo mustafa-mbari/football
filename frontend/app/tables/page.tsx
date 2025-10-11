@@ -73,13 +73,17 @@ function TablesContent() {
     fetchStandings();
   }, []);
 
-  const getLeagueFlag = (country: string): string => {
-    const flags: { [key: string]: string } = {
-      England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      Germany: '🇩🇪',
-      Spain: '🇪🇸',
-    };
-    return flags[country] || '⚽';
+  const getLeagueLogo = (league: League) => {
+    if (league.logoUrl) {
+      return (
+        <img
+          src={league.logoUrl}
+          alt={league.name}
+          className="w-6 h-6 object-contain inline-block"
+        />
+      );
+    }
+    return null;
   };
 
   const getFormIcon = (result: string) => {
@@ -128,7 +132,7 @@ function TablesContent() {
             <TabsList className="grid w-full grid-cols-3 mb-8">
               {standingsData.map((leagueData) => (
                 <TabsTrigger key={leagueData.league.id} value={leagueData.league.id.toString()}>
-                  <span className="mr-2">{getLeagueFlag(leagueData.league.country)}</span>
+                  <span className="mr-2">{getLeagueLogo(leagueData.league)}</span>
                   {leagueData.league.name}
                 </TabsTrigger>
               ))}
@@ -140,7 +144,13 @@ function TablesContent() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{leagueData.league.name} - {leagueData.league.season}</span>
-                      <span className="text-3xl">{getLeagueFlag(leagueData.league.country)}</span>
+                      {leagueData.league.logoUrl && (
+                        <img
+                          src={leagueData.league.logoUrl}
+                          alt={leagueData.league.name}
+                          className="w-12 h-12 object-contain"
+                        />
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

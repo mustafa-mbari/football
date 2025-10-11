@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface League {
   id: number;
@@ -29,9 +29,10 @@ interface GameWeek {
   };
 }
 
-export default function GameWeeksPage() {
+function GameWeeksContent() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [gameWeeks, setGameWeeks] = useState<GameWeek[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
@@ -60,7 +61,11 @@ export default function GameWeeksPage() {
         ) as League[];
         setLeagues(uniqueLeagues);
 
-        if (uniqueLeagues.length > 0) {
+        // Check if there's a league in URL params, otherwise use first league
+        const leagueParam = searchParams.get('league');
+        if (leagueParam && uniqueLeagues.some(l => l.id.toString() === leagueParam)) {
+          setSelectedLeague(leagueParam);
+        } else if (uniqueLeagues.length > 0) {
           setSelectedLeague(uniqueLeagues[0].id.toString());
         }
       }
@@ -101,6 +106,12 @@ export default function GameWeeksPage() {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const handleLeagueChange = (leagueId: string) => {
+    setSelectedLeague(leagueId);
+    // Update URL to preserve tab selection
+    router.push(`/admin/gameweeks?league=${leagueId}`, { scroll: false });
   };
 
   const handleSyncMatches = async (leagueId?: number) => {
@@ -184,7 +195,7 @@ export default function GameWeeksPage() {
         {loading ? (
           <div className="text-center text-slate-600 dark:text-slate-400">Loading gameweeks...</div>
         ) : (
-          <Tabs value={selectedLeague} onValueChange={setSelectedLeague} className="w-full">
+          <Tabs value={selectedLeague} onValueChange={handleLeagueChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">
               {leagues.map((league) => (
                 <TabsTrigger key={league.id} value={league.id.toString()}>
@@ -283,5 +294,20 @@ export default function GameWeeksPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function GameWeeksPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <GameWeeksContent />
+    </Suspense>
   );
 }
