@@ -69,7 +69,7 @@ interface GameWeek {
 }
 
 export default function GameWeekDetailPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const [gameWeek, setGameWeek] = useState<GameWeek | null>(null);
@@ -83,6 +83,8 @@ export default function GameWeekDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [prevGameWeekId, setPrevGameWeekId] = useState<number | null>(null);
+  const [nextGameWeekId, setNextGameWeekId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
     homeTeamId: 0,
     awayTeamId: 0,
@@ -93,14 +95,25 @@ export default function GameWeekDetailPage() {
   });
 
   useEffect(() => {
+    // Don't redirect while authentication is loading
+    if (authLoading) {
+      console.log('Auth is loading, waiting...');
+      return;
+    }
+
+    console.log('Auth loaded:', { user: user?.username, role: user?.role, authLoading });
+
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
+      console.log('User not authorized, redirecting to /');
       router.push('/');
       return;
     }
 
+    console.log('User authorized, fetching data...');
     fetchGameWeek();
     fetchTeams();
-  }, [user, router, params.id]);
+    fetchTotalGameWeeks();
+  }, [user, authLoading, router, params.id]);
 
   const fetchTeams = async () => {
     try {
@@ -111,6 +124,25 @@ export default function GameWeekDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
+    }
+  };
+
+  const fetchTotalGameWeeks = async () => {
+    try {
+      const response = await fetch('http://localhost:7070/api/gameweeks');
+      if (response.ok) {
+        const data = await response.json();
+        const gameweeks = data.data;
+
+        // Find current gameweek index and set prev/next IDs
+        const currentIndex = gameweeks.findIndex((gw: any) => gw.id === parseInt(params.id as string));
+        if (currentIndex !== -1) {
+          setPrevGameWeekId(currentIndex > 0 ? gameweeks[currentIndex - 1].id : null);
+          setNextGameWeekId(currentIndex < gameweeks.length - 1 ? gameweeks[currentIndex + 1].id : null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching total gameweeks:', error);
     }
   };
 
@@ -283,8 +315,8 @@ export default function GameWeekDetailPage() {
       awayTeamId: match.awayTeam.id,
       matchDate: localDateTime,
       status: match.status || 'SCHEDULED',
-      homeScore: match.homeScore,
-      awayScore: match.awayScore,
+      homeScore: match.homeScore ?? null,
+      awayScore: match.awayScore ?? null,
     });
     setEditDialogOpen(true);
   };
@@ -310,9 +342,16 @@ export default function GameWeekDetailPage() {
       });
 
       if (response.ok) {
-        alert('Match updated successfully!');
+        const data = await response.json();
         setEditDialogOpen(false);
         fetchGameWeek();
+
+        // Show appropriate message based on whether match needs re-syncing
+        if (data.message.includes('unsynced')) {
+          alert('⚠️ Match updated successfully!\n\nIMPORTANT: The match has been marked as unsynced. To update the tables:\n1. Go to Admin → Update Standings\n2. Click "Recalculate Tables" button\n\nDO NOT use the sync buttons as they will duplicate stats.');
+        } else {
+          alert('Match updated successfully!');
+        }
       } else {
         const data = await response.json();
         alert(data.message || 'Failed to update match');
@@ -387,6 +426,18 @@ export default function GameWeekDetailPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
     return null;
@@ -466,17 +517,39 @@ export default function GameWeekDetailPage() {
             </Button>
           </Link>
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => prevGameWeekId && router.push(`/admin/gameweeks/${prevGameWeekId}`)}
+                disabled={!prevGameWeekId}
+                className="px-3"
+              >
+                ← Previous
+              </Button>
+              <h2 className="text-4xl font-bold text-slate-900 dark:text-white">
                 {getLeagueFlag(gameWeek.league.country)} Week {gameWeek.weekNumber}
               </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-300">
-                {gameWeek.league.name} - {gameWeek.league.season}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {new Date(gameWeek.startDate).toLocaleDateString()} -{' '}
-                {new Date(gameWeek.endDate).toLocaleDateString()}
-              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => nextGameWeekId && router.push(`/admin/gameweeks/${nextGameWeekId}`)}
+                disabled={!nextGameWeekId}
+                className="px-3"
+              >
+                Next →
+              </Button>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <div>
+                <p className="text-lg text-slate-600 dark:text-slate-300">
+                  {gameWeek.league.name} - {gameWeek.league.season}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {new Date(gameWeek.startDate).toLocaleDateString()} -{' '}
+                  {new Date(gameWeek.endDate).toLocaleDateString()}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               {getStatusBadge(gameWeek.status)}
