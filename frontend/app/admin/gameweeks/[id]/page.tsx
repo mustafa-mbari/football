@@ -484,7 +484,7 @@ export default function GameWeekDetailPage() {
                 🏠 Dashboard
               </Button>
             </Link>
-            <Link href="/admin/gameweeks">
+            <Link href={`/admin/gameweeks${gameWeek ? `?league=${gameWeek.league.id}` : ''}`}>
               <Button variant="default" size="sm">
                 📅 Manage GameWeeks
               </Button>
@@ -511,7 +511,7 @@ export default function GameWeekDetailPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/admin/gameweeks">
+          <Link href={`/admin/gameweeks${gameWeek ? `?league=${gameWeek.league.id}` : ''}`}>
             <Button variant="ghost" size="sm" className="mb-4">
               ← Back to GameWeeks
             </Button>
@@ -521,7 +521,7 @@ export default function GameWeekDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => prevGameWeekId && router.push(`/admin/gameweeks/${prevGameWeekId}`)}
+                onClick={() => prevGameWeekId && router.push(`/admin/gameweeks/${prevGameWeekId}?league=${gameWeek.league.id}`)}
                 disabled={!prevGameWeekId}
                 className="px-3"
               >
@@ -533,7 +533,7 @@ export default function GameWeekDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => nextGameWeekId && router.push(`/admin/gameweeks/${nextGameWeekId}`)}
+                onClick={() => nextGameWeekId && router.push(`/admin/gameweeks/${nextGameWeekId}?league=${gameWeek.league.id}`)}
                 disabled={!nextGameWeekId}
                 className="px-3"
               >
