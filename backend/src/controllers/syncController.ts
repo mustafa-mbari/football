@@ -221,7 +221,53 @@ export const syncMatch = async (req: Request, res: Response) => {
       }
     }
 
-    // 4. Recalculate positions
+    // 4. Update form for both teams (last 5 matches)
+    const updateTeamForm = async (teamId: number) => {
+      // Get last 5 finished matches for this team
+      const recentMatches = await prisma.match.findMany({
+        where: {
+          leagueId: match.leagueId,
+          status: 'FINISHED',
+          OR: [
+            { homeTeamId: teamId },
+            { awayTeamId: teamId }
+          ],
+          homeScore: { not: null },
+          awayScore: { not: null }
+        },
+        orderBy: { matchDate: 'desc' },
+        take: 5
+      });
+
+      const formString = recentMatches
+        .reverse()
+        .map((m) => {
+          const isHome = m.homeTeamId === teamId;
+          const teamScore = isHome ? m.homeScore! : m.awayScore!;
+          const opponentScore = isHome ? m.awayScore! : m.homeScore!;
+
+          if (teamScore > opponentScore) return 'W';
+          if (teamScore < opponentScore) return 'L';
+          return 'D';
+        })
+        .join('');
+
+      // Update the table with form
+      await prisma.table.update({
+        where: {
+          leagueId_teamId: {
+            leagueId: match.leagueId,
+            teamId: teamId
+          }
+        },
+        data: { form: formString }
+      });
+    };
+
+    await updateTeamForm(match.homeTeamId);
+    await updateTeamForm(match.awayTeamId);
+
+    // 5. Recalculate positions
     const allStandings = await prisma.table.findMany({
       where: { leagueId: match.leagueId },
       orderBy: [
@@ -239,7 +285,7 @@ export const syncMatch = async (req: Request, res: Response) => {
       });
     }
 
-    // 5. Process predictions and award points
+    // 6. Process predictions and award points
     let processedPredictions = 0;
     const userUpdates: { [key: number]: { points: number; correct: boolean } } = {};
 
@@ -292,7 +338,7 @@ export const syncMatch = async (req: Request, res: Response) => {
       processedPredictions++;
     }
 
-    // 6. Update user statistics
+    // 7. Update user statistics
     for (const [userId, data] of Object.entries(userUpdates)) {
       await prisma.user.update({
         where: { id: parseInt(userId) },
@@ -305,7 +351,7 @@ export const syncMatch = async (req: Request, res: Response) => {
       });
     }
 
-    // 7. Mark match as synced
+    // 8. Mark match as synced
     await prisma.match.update({
       where: { id: match.id },
       data: { isSynced: true }
@@ -598,6 +644,57 @@ export const syncGameWeek = async (req: Request, res: Response) => {
       } catch (error: any) {
         errors.push(`Match ${match.id}: ${error.message}`);
       }
+    }
+
+    // Update form for all teams in the league
+    const updateTeamForm = async (teamId: number) => {
+      const recentMatches = await prisma.match.findMany({
+        where: {
+          leagueId: gameWeek.leagueId,
+          status: 'FINISHED',
+          OR: [
+            { homeTeamId: teamId },
+            { awayTeamId: teamId }
+          ],
+          homeScore: { not: null },
+          awayScore: { not: null }
+        },
+        orderBy: { matchDate: 'desc' },
+        take: 5
+      });
+
+      const formString = recentMatches
+        .reverse()
+        .map((m) => {
+          const isHome = m.homeTeamId === teamId;
+          const teamScore = isHome ? m.homeScore! : m.awayScore!;
+          const opponentScore = isHome ? m.awayScore! : m.homeScore!;
+
+          if (teamScore > opponentScore) return 'W';
+          if (teamScore < opponentScore) return 'L';
+          return 'D';
+        })
+        .join('');
+
+      await prisma.table.update({
+        where: {
+          leagueId_teamId: {
+            leagueId: gameWeek.leagueId,
+            teamId: teamId
+          }
+        },
+        data: { form: formString }
+      });
+    };
+
+    // Get all teams in standings and update their form
+    const allTeams = await prisma.table.findMany({
+      where: { leagueId: gameWeek.leagueId },
+      select: { teamId: true }
+    });
+
+    for (const team of allTeams) {
+      await updateTeamForm(team.teamId);
     }
 
     // Recalculate standings positions

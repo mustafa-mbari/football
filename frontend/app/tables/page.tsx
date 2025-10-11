@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { standingsApi } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -29,6 +30,7 @@ interface Standing {
   goalDifference: number;
   points: number;
   form?: string;
+  nextOpponent?: Team | null;
 }
 
 interface League {
@@ -49,24 +51,25 @@ function TablesContent() {
   const [loading, setLoading] = useState(true);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
 
-  useEffect(() => {
-    const fetchStandings = async () => {
-      try {
-        const response = await standingsApi.getAll();
-        const data = response.data.data;
-        setStandingsData(data);
+  const fetchStandings = async () => {
+    setLoading(true);
+    try {
+      const response = await standingsApi.getAll();
+      const data = response.data.data;
+      setStandingsData(data);
 
-        // Set first league as default selected
-        if (data.length > 0) {
-          setSelectedLeague(data[0].league.id.toString());
-        }
-      } catch (error) {
-        console.error('Error fetching standings:', error);
-      } finally {
-        setLoading(false);
+      // Set first league as default selected
+      if (data.length > 0 && !selectedLeague) {
+        setSelectedLeague(data[0].league.id.toString());
       }
-    };
+    } catch (error) {
+      console.error('Error fetching standings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStandings();
   }, []);
 
@@ -95,13 +98,23 @@ function TablesContent() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            League Tables
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-300">
-            View current standings for all leagues
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="text-center flex-1">
+            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
+              League Tables
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-300">
+              View current standings for all leagues
+            </p>
+          </div>
+          <Button
+            onClick={fetchStandings}
+            disabled={loading}
+            variant="outline"
+            className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </Button>
         </div>
 
         {loading ? (
@@ -145,6 +158,7 @@ function TablesContent() {
                             <th className="py-3 px-2 text-center font-semibold">GA</th>
                             <th className="py-3 px-2 text-center font-semibold">GD</th>
                             <th className="py-3 px-2 text-center font-semibold">Pts</th>
+                            <th className="py-3 px-2 text-center font-semibold">Next</th>
                             <th className="py-3 px-4 text-center font-semibold">Form</th>
                           </tr>
                         </thead>
@@ -195,6 +209,20 @@ function TablesContent() {
                                 </span>
                               </td>
                               <td className="py-3 px-2 text-center font-bold">{standing.points}</td>
+                              <td className="py-3 px-2 text-center">
+                                {standing.nextOpponent ? (
+                                  <div className="flex justify-center">
+                                    <img
+                                      src={standing.nextOpponent.logoUrl}
+                                      alt={standing.nextOpponent.name}
+                                      className="w-5 h-5 object-contain"
+                                      title={standing.nextOpponent.name}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
                               <td className="py-3 px-4">
                                 {standing.form && (
                                   <div className="flex gap-1 justify-center">

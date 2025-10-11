@@ -81,12 +81,80 @@ export const getAllStandings = async (req: Request, res: Response) => {
           ]
         });
 
+        // Calculate next opponent for each team
+        const standingsWithNextOpponent = await Promise.all(
+          standings.map(async (standing: any, index: number) => {
+            let nextOpponent = null;
+
+            // Find the next gameweek (played + 1)
+            const nextGameWeekNumber = standing.played + 1;
+
+            // Find the gameweek
+            const nextGameWeek = await prisma.gameWeek.findFirst({
+              where: {
+                leagueId: league.id,
+                weekNumber: nextGameWeekNumber
+              }
+            });
+
+            if (nextGameWeek) {
+              // Find the match in that gameweek for this team
+              const gameWeekMatch = await prisma.gameWeekMatch.findFirst({
+                where: {
+                  gameWeekId: nextGameWeek.id,
+                  match: {
+                    OR: [
+                      { homeTeamId: standing.teamId },
+                      { awayTeamId: standing.teamId }
+                    ]
+                  }
+                },
+                include: {
+                  match: {
+                    include: {
+                      homeTeam: {
+                        select: {
+                          id: true,
+                          name: true,
+                          shortName: true,
+                          code: true,
+                          logoUrl: true
+                        }
+                      },
+                      awayTeam: {
+                        select: {
+                          id: true,
+                          name: true,
+                          shortName: true,
+                          code: true,
+                          logoUrl: true
+                        }
+                      }
+                    }
+                  }
+                }
+              });
+
+              if (gameWeekMatch) {
+                // Determine the opponent
+                const isHomeTeam = gameWeekMatch.match.homeTeamId === standing.teamId;
+                nextOpponent = isHomeTeam
+                  ? gameWeekMatch.match.awayTeam
+                  : gameWeekMatch.match.homeTeam;
+              }
+            }
+
+            return {
+              ...standing,
+              position: index + 1,
+              nextOpponent
+            };
+          })
+        );
+
         return {
           league,
-          standings: standings.map((standing: any, index: number) => ({
-            ...standing,
-            position: index + 1
-          }))
+          standings: standingsWithNextOpponent
         };
       })
     );
@@ -221,6 +289,47 @@ export const recalculateStandings = async (req: Request, res: Response) => {
           ...standings[i],
           position: i + 1
         }
+      });
+    }
+
+    // Calculate and update form for each team
+    for (const standing of standings) {
+      const recentMatches = await prisma.match.findMany({
+        where: {
+          leagueId: parseInt(leagueId),
+          status: 'FINISHED',
+          OR: [
+            { homeTeamId: standing.teamId },
+            { awayTeamId: standing.teamId }
+          ],
+          homeScore: { not: null },
+          awayScore: { not: null }
+        },
+        orderBy: { matchDate: 'desc' },
+        take: 5
+      });
+
+      const formString = recentMatches
+        .reverse()
+        .map((m) => {
+          const isHome = m.homeTeamId === standing.teamId;
+          const teamScore = isHome ? m.homeScore! : m.awayScore!;
+          const opponentScore = isHome ? m.awayScore! : m.homeScore!;
+
+          if (teamScore > opponentScore) return 'W';
+          if (teamScore < opponentScore) return 'L';
+          return 'D';
+        })
+        .join('');
+
+      await prisma.table.update({
+        where: {
+          leagueId_teamId: {
+            leagueId: parseInt(leagueId),
+            teamId: standing.teamId
+          }
+        },
+        data: { form: formString }
       });
     }
 
