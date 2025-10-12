@@ -111,16 +111,31 @@ export default function GameWeekDetailPage() {
 
     console.log('User authorized, fetching data...');
     fetchGameWeek();
-    fetchTeams();
     fetchTotalGameWeeks();
   }, [user, authLoading, router, params.id]);
 
+  // Fetch teams after gameweek is loaded
+  useEffect(() => {
+    if (gameWeek) {
+      fetchTeams();
+    }
+  }, [gameWeek?.league?.id]);
+
   const fetchTeams = async () => {
     try {
-      const response = await fetch('http://localhost:7070/api/teams');
+      // First, we need to get the gameweek to know which league's teams to fetch
+      if (!gameWeek) {
+        console.log('GameWeek not loaded yet, waiting...');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:7070/api/leagues/${gameWeek.league.id}/teams`);
       if (response.ok) {
         const data = await response.json();
-        setTeams(data.data);
+        console.log('Fetched teams for league', gameWeek.league.id, ':', data.data);
+        setTeams(data.data || []);
+      } else {
+        console.error('Failed to fetch teams, status:', response.status);
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
@@ -304,41 +319,63 @@ export default function GameWeekDetailPage() {
   };
 
   const handleEditMatch = (match: Match) => {
+    console.log('Opening edit dialog for match:', match);
+    console.log('Available teams:', teams);
     setSelectedMatch(match);
     const matchDateTime = new Date(match.matchDate);
     const localDateTime = new Date(matchDateTime.getTime() - matchDateTime.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
 
-    setEditForm({
-      homeTeamId: match.homeTeam.id,
-      awayTeamId: match.awayTeam.id,
+    const formData = {
+      homeTeamId: Number(match.homeTeam.id),
+      awayTeamId: Number(match.awayTeam.id),
       matchDate: localDateTime,
       status: match.status || 'SCHEDULED',
       homeScore: match.homeScore ?? null,
       awayScore: match.awayScore ?? null,
-    });
+    };
+    console.log('Setting edit form to:', formData);
+    setEditForm(formData);
     setEditDialogOpen(true);
   };
 
   const handleSaveEditMatch = async () => {
     if (!selectedMatch) return;
 
+    // Validate form
+    if (!editForm.homeTeamId || editForm.homeTeamId === 0) {
+      alert('Please select a home team');
+      return;
+    }
+    if (!editForm.awayTeamId || editForm.awayTeamId === 0) {
+      alert('Please select an away team');
+      return;
+    }
+    if (!editForm.matchDate) {
+      alert('Please select a match date and time');
+      return;
+    }
+
     try {
+      const payload = {
+        homeTeamId: editForm.homeTeamId,
+        awayTeamId: editForm.awayTeamId,
+        matchDate: new Date(editForm.matchDate).toISOString(),
+        status: editForm.status,
+        homeScore: editForm.homeScore,
+        awayScore: editForm.awayScore,
+      };
+
+      console.log('Updating match with payload:', payload);
+
       const response = await fetch(`http://localhost:7070/api/matches/${selectedMatch.id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          homeTeamId: editForm.homeTeamId,
-          awayTeamId: editForm.awayTeamId,
-          matchDate: new Date(editForm.matchDate).toISOString(),
-          status: editForm.status,
-          homeScore: editForm.homeScore,
-          awayScore: editForm.awayScore,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -923,11 +960,11 @@ export default function GameWeekDetailPage() {
                 <Label htmlFor="homeTeam">Home Team</Label>
                 <select
                   id="homeTeam"
-                  value={editForm.homeTeamId}
+                  value={editForm.homeTeamId || 0}
                   onChange={(e) => setEditForm({ ...editForm, homeTeamId: parseInt(e.target.value) })}
                   className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
                 >
-                  <option value={0}>Select Home Team</option>
+                  <option value={0} disabled>Select Home Team</option>
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.name}
@@ -939,11 +976,11 @@ export default function GameWeekDetailPage() {
                 <Label htmlFor="awayTeam">Away Team</Label>
                 <select
                   id="awayTeam"
-                  value={editForm.awayTeamId}
+                  value={editForm.awayTeamId || 0}
                   onChange={(e) => setEditForm({ ...editForm, awayTeamId: parseInt(e.target.value) })}
                   className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
                 >
-                  <option value={0}>Select Away Team</option>
+                  <option value={0} disabled>Select Away Team</option>
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.name}
@@ -959,9 +996,14 @@ export default function GameWeekDetailPage() {
                 id="matchDate"
                 type="datetime-local"
                 value={editForm.matchDate}
-                onChange={(e) => setEditForm({ ...editForm, matchDate: e.target.value })}
+                onChange={(e) => {
+                  console.log('Match date changed to:', e.target.value);
+                  setEditForm({ ...editForm, matchDate: e.target.value });
+                }}
                 className="mt-2"
+                required
               />
+              <p className="text-xs text-slate-500 mt-1">Current value: {editForm.matchDate}</p>
             </div>
 
             <div>
@@ -969,7 +1011,22 @@ export default function GameWeekDetailPage() {
               <select
                 id="matchStatus"
                 value={editForm.status}
-                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  console.log('Status changed to:', newStatus);
+
+                  // If changing to SCHEDULED or POSTPONED, clear the scores
+                  if (newStatus === 'SCHEDULED' || newStatus === 'POSTPONED') {
+                    setEditForm({
+                      ...editForm,
+                      status: newStatus,
+                      homeScore: null,
+                      awayScore: null
+                    });
+                  } else {
+                    setEditForm({ ...editForm, status: newStatus });
+                  }
+                }}
                 className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
               >
                 <option value="SCHEDULED">Scheduled</option>
@@ -977,33 +1034,65 @@ export default function GameWeekDetailPage() {
                 <option value="FINISHED">Finished</option>
                 <option value="POSTPONED">Postponed</option>
               </select>
+              {(editForm.status === 'SCHEDULED' || editForm.status === 'POSTPONED') && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  ℹ️ Scores will be cleared when status is set to {editForm.status}
+                </p>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="homeScore">Home Score</Label>
-                <Input
-                  id="homeScore"
-                  type="number"
-                  min="0"
-                  value={editForm.homeScore ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, homeScore: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="Score"
-                  className="mt-2"
-                />
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Match Scores</Label>
+                {(editForm.homeScore !== null || editForm.awayScore !== null) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditForm({
+                        ...editForm,
+                        homeScore: null,
+                        awayScore: null
+                      });
+                    }}
+                    className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                  >
+                    🗑️ Clear Scores
+                  </Button>
+                )}
               </div>
-              <div>
-                <Label htmlFor="awayScore">Away Score</Label>
-                <Input
-                  id="awayScore"
-                  type="number"
-                  min="0"
-                  value={editForm.awayScore ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, awayScore: e.target.value ? parseInt(e.target.value) : null })}
-                  placeholder="Score"
-                  className="mt-2"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="homeScore" className="text-sm text-slate-600 dark:text-slate-400">Home Score</Label>
+                  <Input
+                    id="homeScore"
+                    type="number"
+                    min="0"
+                    value={editForm.homeScore ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, homeScore: e.target.value ? parseInt(e.target.value) : null })}
+                    placeholder="Score"
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="awayScore" className="text-sm text-slate-600 dark:text-slate-400">Away Score</Label>
+                  <Input
+                    id="awayScore"
+                    type="number"
+                    min="0"
+                    value={editForm.awayScore ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, awayScore: e.target.value ? parseInt(e.target.value) : null })}
+                    placeholder="Score"
+                    className="mt-2"
+                  />
+                </div>
               </div>
+              {editForm.homeScore === null && editForm.awayScore === null && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  No scores entered - match has not been played
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>

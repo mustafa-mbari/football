@@ -83,6 +83,32 @@ function LeagueContent() {
     fetchInitialData();
   }, [params.id]);
 
+  // Refresh deadline setting when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchDeadlineSetting();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', fetchDeadlineSetting);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', fetchDeadlineSetting);
+    };
+  }, []);
+
+  const fetchDeadlineSetting = async () => {
+    try {
+      const settingResponse = await settingsApi.getSetting('PREDICTION_DEADLINE_HOURS');
+      setPredictionDeadlineHours(parseInt(settingResponse.data.data.value));
+    } catch (error) {
+      console.log('Using default deadline: 4 hours');
+    }
+  };
+
   const fetchInitialData = async () => {
     try {
       // Fetch league details
@@ -90,12 +116,7 @@ function LeagueContent() {
       setLeague(leagueResponse.data.data);
 
       // Fetch prediction deadline setting
-      try {
-        const settingResponse = await settingsApi.getSetting('PREDICTION_DEADLINE_HOURS');
-        setPredictionDeadlineHours(parseInt(settingResponse.data.data.value));
-      } catch (error) {
-        console.log('Using default deadline: 4 hours');
-      }
+      await fetchDeadlineSetting();
 
       // Fetch current gameweek by status
       try {
@@ -118,6 +139,8 @@ function LeagueContent() {
 
   const fetchGameWeekDetails = async (gameWeekId: number) => {
     try {
+      // Also refresh the deadline setting when changing gameweeks
+      await fetchDeadlineSetting();
       const response = await api.get(`/gameweeks/${gameWeekId}`);
       setCurrentGameWeek(response.data.data);
     } catch (error) {
@@ -280,12 +303,24 @@ function LeagueContent() {
 
         {currentGameWeek && (
           <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
-              GameWeek {currentGameWeek.weekNumber}
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-400">
-              Status: <strong>{currentGameWeek.status}</strong> • {currentGameWeek._count.matches} matches
-            </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                  GameWeek {currentGameWeek.weekNumber}
+                </h3>
+                <p className="text-sm text-blue-800 dark:text-blue-400">
+                  Status: <strong>{currentGameWeek.status}</strong> • {currentGameWeek._count.matches} matches
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                  Prediction Deadline
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-400">
+                  <strong>{predictionDeadlineHours} hour{predictionDeadlineHours !== 1 ? 's' : ''}</strong> before kickoff
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

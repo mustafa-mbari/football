@@ -87,6 +87,11 @@ export default function AdminDashboard() {
                 Update Standings
               </Button>
             </Link>
+            <Link href="/admin/predictions">
+              <Button variant="ghost" size="sm">
+                Predictions
+              </Button>
+            </Link>
             <Link href="/admin/settings">
               <Button variant="ghost" size="sm">
                 Settings
@@ -172,6 +177,11 @@ export default function AdminDashboard() {
               <Link href="/admin/standings">
                 <Button className="w-full" variant="outline">
                   Update Standings
+                </Button>
+              </Link>
+              <Link href="/admin/predictions">
+                <Button className="w-full" variant="outline">
+                  Predictions Management
                 </Button>
               </Link>
               <Button className="w-full" variant="outline" onClick={() => window.open('http://localhost:5555', '_blank')}>

@@ -16,22 +16,39 @@ import {
   removeMatchFromGameWeek,
   syncMatchesToGameWeeks
 } from '../controllers/gameWeekController';
-import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
 
 // Optional auth middleware - adds userId if logged in but doesn't require it
-const optionalAuth = (req: any, res: any, next: any) => {
-  // Try to extract token but don't fail if it's not there
-  const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+const optionalAuth = async (req: any, _res: any, next: any) => {
+  try {
+    const sessionToken = req.cookies?.sessionToken;
 
-  if (token) {
-    authMiddleware(req, res, (err?: any) => {
-      // Continue even if auth fails
-      next();
+    if (!sessionToken) {
+      // No session token, continue without authentication
+      return next();
+    }
+
+    // Try to authenticate, but don't fail if it doesn't work
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const session = await prisma.session.findUnique({
+      where: { token: sessionToken },
+      include: { user: true }
     });
-  } else {
-    // No token, just continue without userId
+
+    // If valid session and not expired, attach user info
+    if (session && session.expiresAt >= new Date() && session.user.isActive) {
+      req.userId = session.userId;
+      req.user = session.user;
+      req.sessionId = session.id;
+    }
+
+    await prisma.$disconnect();
+    next();
+  } catch (error) {
+    // On error, just continue without authentication
     next();
   }
 };
