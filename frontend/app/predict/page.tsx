@@ -12,6 +12,8 @@ interface League {
   country: string;
   season: string;
   logoUrl?: string;
+  isActive: boolean;
+  priority?: number;
   _count?: {
     teams: number;
     matches: number;
@@ -26,6 +28,7 @@ function PredictContent() {
     const fetchLeagues = async () => {
       try {
         const response = await leaguesApi.getAll();
+        // API returns only active leagues sorted by priority
         setLeagues(response.data.data);
       } catch (error) {
         console.error('Error fetching leagues:', error);

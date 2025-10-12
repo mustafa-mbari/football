@@ -4,9 +4,10 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
+import LeagueSelector from '@/components/LeagueSelector';
 
 interface League {
   id: number;
@@ -51,23 +52,23 @@ function GameWeeksContent() {
 
   const fetchGameWeeks = async () => {
     try {
+      // Fetch all active leagues (admin should see all leagues including those without gameweeks)
+      const leaguesResponse = await api.get('/leagues?includeInactive=true');
+      const allLeagues = leaguesResponse.data.data;
+      setLeagues(allLeagues);
+
+      // Fetch gameweeks
       const response = await fetch('http://localhost:7070/api/gameweeks');
       if (response.ok) {
         const data = await response.json();
         setGameWeeks(data.data);
 
-        // Extract unique leagues
-        const uniqueLeagues = Array.from(
-          new Map(data.data.map((gw: GameWeek) => [gw.league.id, gw.league])).values()
-        ) as League[];
-        setLeagues(uniqueLeagues);
-
         // Check if there's a league in URL params, otherwise use first league
         const leagueParam = searchParams.get('league');
-        if (leagueParam && uniqueLeagues.some(l => l.id.toString() === leagueParam)) {
+        if (leagueParam && allLeagues.some((l: League) => l.id.toString() === leagueParam)) {
           setSelectedLeague(leagueParam);
-        } else if (uniqueLeagues.length > 0) {
-          setSelectedLeague(uniqueLeagues[0].id.toString());
+        } else if (allLeagues.length > 0) {
+          setSelectedLeague(allLeagues[0].id.toString());
         }
       }
     } catch (error) {
@@ -160,27 +161,37 @@ function GameWeeksContent() {
           <div className="flex gap-2 py-2 overflow-x-auto">
             <Link href="/admin">
               <Button variant="ghost" size="sm">
-                🏠 Dashboard
+                Dashboard
+              </Button>
+            </Link>
+            <Link href="/admin/leagues">
+              <Button variant="ghost" size="sm">
+                Manage Leagues
               </Button>
             </Link>
             <Link href="/admin/gameweeks">
               <Button variant="default" size="sm">
-                📅 Manage GameWeeks
+                Manage GameWeeks
               </Button>
             </Link>
             <Link href="/admin/matches">
               <Button variant="ghost" size="sm">
-                ⚽ Manage Matches
+                Manage Matches
               </Button>
             </Link>
             <Link href="/admin/matches/bulk-import">
               <Button variant="ghost" size="sm">
-                📋 Bulk Import
+                Bulk Import
               </Button>
             </Link>
             <Link href="/admin/standings">
               <Button variant="ghost" size="sm">
-                📊 Update Standings
+                Update Standings
+              </Button>
+            </Link>
+            <Link href="/admin/settings">
+              <Button variant="ghost" size="sm">
+                Settings
               </Button>
             </Link>
           </div>
@@ -199,19 +210,20 @@ function GameWeeksContent() {
 
         {loading ? (
           <div className="text-center text-slate-600 dark:text-slate-400">Loading gameweeks...</div>
+        ) : leagues.length === 0 ? (
+          <div className="text-center text-slate-600 dark:text-slate-400">
+            No leagues found. Please create a league first.
+          </div>
         ) : (
-          <Tabs value={selectedLeague} onValueChange={handleLeagueChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              {leagues.map((league) => (
-                <TabsTrigger key={league.id} value={league.id.toString()}>
-                  <span className="mr-2">{getLeagueLogo(league)}</span>
-                  {league.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <div className="w-full">
+            <LeagueSelector
+              leagues={leagues}
+              selectedLeagueId={selectedLeague}
+              onLeagueChange={handleLeagueChange}
+            />
 
-            {leagues.map((league) => (
-              <TabsContent key={league.id} value={league.id.toString()}>
+            {leagues.filter(l => l.id.toString() === selectedLeague).map((league) => (
+              <div key={league.id}>
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -293,9 +305,9 @@ function GameWeeksContent() {
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+              </div>
             ))}
-          </Tabs>
+          </div>
         )}
       </main>
     </div>

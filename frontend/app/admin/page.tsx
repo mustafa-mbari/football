@@ -59,27 +59,37 @@ export default function AdminDashboard() {
           <div className="flex gap-2 py-2 overflow-x-auto">
             <Link href="/admin">
               <Button variant="ghost" size="sm">
-                🏠 Dashboard
+                Dashboard
+              </Button>
+            </Link>
+            <Link href="/admin/leagues">
+              <Button variant="ghost" size="sm">
+                Manage Leagues
               </Button>
             </Link>
             <Link href="/admin/gameweeks">
               <Button variant="ghost" size="sm">
-                📅 Manage GameWeeks
+                Manage GameWeeks
               </Button>
             </Link>
             <Link href="/admin/matches">
               <Button variant="ghost" size="sm">
-                ⚽ Manage Matches
+                Manage Matches
               </Button>
             </Link>
             <Link href="/admin/matches/bulk-import">
               <Button variant="ghost" size="sm">
-                📋 Bulk Import
+                Bulk Import
               </Button>
             </Link>
             <Link href="/admin/standings">
               <Button variant="ghost" size="sm">
-                📊 Update Standings
+                Update Standings
+              </Button>
+            </Link>
+            <Link href="/admin/settings">
+              <Button variant="ghost" size="sm">
+                Settings
               </Button>
             </Link>
           </div>
@@ -144,23 +154,28 @@ export default function AdminDashboard() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href="/admin/gameweeks">
+              <Link href="/admin/leagues">
                 <Button className="w-full" variant="default">
-                  📅 Manage GameWeeks
+                  Manage Leagues
+                </Button>
+              </Link>
+              <Link href="/admin/gameweeks">
+                <Button className="w-full" variant="outline">
+                  Manage GameWeeks
                 </Button>
               </Link>
               <Link href="/admin/matches">
                 <Button className="w-full" variant="outline">
-                  ⚽ Manage Matches
+                  Manage Matches
                 </Button>
               </Link>
               <Link href="/admin/standings">
                 <Button className="w-full" variant="outline">
-                  📊 Update Standings
+                  Update Standings
                 </Button>
               </Link>
               <Button className="w-full" variant="outline" onClick={() => window.open('http://localhost:5555', '_blank')}>
-                🗄️ Open Prisma Studio
+                Open Prisma Studio
               </Button>
             </CardContent>
           </Card>

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { standingsApi } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import LeagueSelector from '@/components/LeagueSelector';
 
 interface Team {
   id: number;
@@ -128,18 +129,15 @@ function TablesContent() {
             No standings data available. Please ensure the database is seeded.
           </div>
         ) : (
-          <Tabs value={selectedLeague} onValueChange={setSelectedLeague} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              {standingsData.map((leagueData) => (
-                <TabsTrigger key={leagueData.league.id} value={leagueData.league.id.toString()}>
-                  <span className="mr-2">{getLeagueLogo(leagueData.league)}</span>
-                  {leagueData.league.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <div className="w-full">
+            <LeagueSelector
+              leagues={standingsData.map(ld => ld.league)}
+              selectedLeagueId={selectedLeague}
+              onLeagueChange={setSelectedLeague}
+            />
 
-            {standingsData.map((leagueData) => (
-              <TabsContent key={leagueData.league.id} value={leagueData.league.id.toString()}>
+            {standingsData.filter(ld => ld.league.id.toString() === selectedLeague).map((leagueData) => (
+              <div key={leagueData.league.id}>
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -260,9 +258,9 @@ function TablesContent() {
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+              </div>
             ))}
-          </Tabs>
+          </div>
         )}
       </main>
     </div>

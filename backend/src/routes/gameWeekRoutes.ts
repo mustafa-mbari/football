@@ -22,10 +22,18 @@ const router = express.Router();
 
 // Optional auth middleware - adds userId if logged in but doesn't require it
 const optionalAuth = (req: any, res: any, next: any) => {
-  authMiddleware(req, res, (err?: any) => {
-    // Continue even if auth fails
+  // Try to extract token but don't fail if it's not there
+  const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+
+  if (token) {
+    authMiddleware(req, res, (err?: any) => {
+      // Continue even if auth fails
+      next();
+    });
+  } else {
+    // No token, just continue without userId
     next();
-  });
+  }
 };
 
 // Public routes

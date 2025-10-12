@@ -23,7 +23,31 @@ export const authApi = {
 // Leagues API
 export const leaguesApi = {
   getAll: () => api.get('/leagues'),
-  getById: (id: number) => api.get(`/leagues/${id}`)
+  getById: (id: number) => api.get(`/leagues/${id}`),
+  create: (data: {
+    name: string;
+    code: string;
+    country?: string;
+    logoUrl?: string;
+    season: string;
+    startDate: string;
+    endDate: string;
+    isActive?: boolean;
+    priority?: number;
+  }) => api.post('/leagues', data),
+  update: (id: number, data: {
+    name?: string;
+    code?: string;
+    country?: string;
+    logoUrl?: string;
+    season?: string;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+    priority?: number;
+  }) => api.put(`/leagues/${id}`, data),
+  delete: (id: number) => api.delete(`/leagues/${id}`),
+  toggleActive: (id: number) => api.patch(`/leagues/${id}/toggle-active`)
 };
 
 // Matches API
