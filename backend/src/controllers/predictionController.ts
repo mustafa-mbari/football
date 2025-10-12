@@ -188,3 +188,62 @@ export const updateMatchScore = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Admin endpoint to recalculate all prediction points
+export const recalculateAllPoints = async (req: Request, res: Response) => {
+  try {
+    // Get all matches that have scores
+    const matches = await prisma.match.findMany({
+      where: {
+        AND: [
+          { homeScore: { not: null } },
+          { awayScore: { not: null } }
+        ]
+      },
+      include: {
+        predictions: true
+      }
+    });
+
+    let totalPredictions = 0;
+    let updatedPredictions = 0;
+    let totalPointsAwarded = 0;
+
+    // Recalculate points for each prediction
+    for (const match of matches) {
+      for (const prediction of match.predictions) {
+        totalPredictions++;
+
+        const points = calculatePoints(
+          prediction.predictedHomeScore,
+          prediction.predictedAwayScore,
+          match.homeScore!,
+          match.awayScore!
+        );
+
+        await prisma.prediction.update({
+          where: { id: prediction.id },
+          data: { totalPoints: points }
+        });
+
+        updatedPredictions++;
+        totalPointsAwarded += points;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully recalculated points for ${updatedPredictions} predictions`,
+      stats: {
+        totalPredictions,
+        updatedPredictions,
+        totalPointsAwarded
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
