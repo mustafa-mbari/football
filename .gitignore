@@ -51,6 +51,7 @@ Thumbs.db
 *-enhanced.*
 *-new.*
 page-old.tsx
+backend/prisma/seeds/data/backup/
 
 # Claude
 .claude/settings.local.json
