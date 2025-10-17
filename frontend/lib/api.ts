@@ -65,6 +65,7 @@ export const predictionsApi = {
     matchId: number;
     predictedHomeScore: number;
     predictedAwayScore: number;
+    groupId?: number;
   }) => api.post('/predictions', data),
   getUserPredictions: () => api.get('/predictions/user'),
   getMatchPredictions: (matchId: number) =>
@@ -111,4 +112,33 @@ export const gameWeeksApi = {
   getByLeague: (leagueId: number) => api.get(`/gameweeks/league/${leagueId}`),
   getCurrentByStatus: (leagueId: number) => api.get(`/gameweeks/league/${leagueId}/current-by-status`),
   getDetails: (id: number) => api.get(`/gameweeks/${id}`)
+};
+
+// Groups API
+export const groupsApi = {
+  create: (data: {
+    name: string;
+    description?: string;
+    leagueId: number;
+    allowedTeamIds?: number[];
+    joinCode?: string;
+  }) => api.post('/groups', data),
+
+  getAll: () => api.get('/groups'),
+  getPublic: () => api.get('/groups/public'),
+  getUserGroups: () => api.get('/groups/user'),
+  getById: (id: number) => api.get(`/groups/${id}`),
+  getLeaderboard: (id: number, leagueId?: number) =>
+    api.get(`/groups/${id}/leaderboard`, { params: { leagueId } }),
+
+  join: (id: number, joinCode?: string) =>
+    api.post(`/groups/${id}/join`, { joinCode }),
+  leave: (id: number) => api.delete(`/groups/${id}/leave`),
+  update: (id: number, data: {
+    name?: string;
+    description?: string;
+    maxMembers?: number;
+    allowedTeamIds?: number[];
+  }) => api.put(`/groups/${id}`, data),
+  delete: (id: number) => api.delete(`/groups/${id}`)
 };

@@ -18,6 +18,7 @@ import gameWeekRoutes from './routes/gameWeekRoutes';
 import syncRoutes from './routes/syncRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import pointsRuleRoutes from './routes/pointsRuleRoutes';
+import groupRoutes from './routes/groupRoutes';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use('/api/gameweeks', gameWeekRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/points-rules', pointsRuleRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { calculatePoints } from '../utils/scoreCalculator';
+import { autoJoinPublicGroup } from './groupController';
+import { pointsUpdateService } from '../services/pointsUpdateService';
 
 export const createPrediction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { matchId, predictedHomeScore, predictedAwayScore } = req.body;
+    const { matchId, predictedHomeScore, predictedAwayScore, groupId } = req.body;
 
     if (matchId === undefined || predictedHomeScore === undefined || predictedAwayScore === undefined) {
       return res.status(400).json({
@@ -16,7 +18,12 @@ export const createPrediction = async (req: Request, res: Response) => {
 
     // Check if match exists and hasn't started yet
     const match = await prisma.match.findUnique({
-      where: { id: matchId }
+      where: { id: matchId },
+      include: {
+        league: true,
+        homeTeam: true,
+        awayTeam: true
+      }
     });
 
     if (!match) {
@@ -32,6 +39,29 @@ export const createPrediction = async (req: Request, res: Response) => {
         message: 'Cannot predict for matches that have already started'
       });
     }
+
+    // If groupId provided, validate team is allowed in group
+    if (groupId) {
+      const group = await prisma.group.findUnique({
+        where: { id: groupId }
+      });
+
+      if (group && group.allowedTeamIds && group.allowedTeamIds.length > 0) {
+        const isAllowed =
+          group.allowedTeamIds.includes(match.homeTeamId) ||
+          group.allowedTeamIds.includes(match.awayTeamId);
+
+        if (!isAllowed) {
+          return res.status(400).json({
+            success: false,
+            message: 'This match is not available in the selected group'
+          });
+        }
+      }
+    }
+
+    // Auto-join user to public group for this league
+    await autoJoinPublicGroup(userId, match.leagueId);
 
     // Create or update prediction
     const prediction = await prisma.prediction.upsert({
@@ -55,7 +85,8 @@ export const createPrediction = async (req: Request, res: Response) => {
         match: {
           include: {
             homeTeam: true,
-            awayTeam: true
+            awayTeam: true,
+            league: true
           }
         }
       }
@@ -146,13 +177,26 @@ export const updateMatchScore = async (req: Request, res: Response) => {
       });
     }
 
+    // Get match with league info
+    const matchData = await prisma.match.findUnique({
+      where: { id: parseInt(matchId) }
+    });
+
+    if (!matchData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Match not found'
+      });
+    }
+
     // Update match
     const match = await prisma.match.update({
       where: { id: parseInt(matchId) },
       data: {
         homeScore,
         awayScore,
-        status: status || 'finished'
+        status: status || 'FINISHED',
+        isPredictionLocked: true
       }
     });
 
@@ -161,7 +205,7 @@ export const updateMatchScore = async (req: Request, res: Response) => {
       where: { matchId: parseInt(matchId) }
     });
 
-    // Update points for each prediction
+    // Update points for each prediction and update group points
     for (const prediction of predictions) {
       const points = calculatePoints(
         prediction.predictedHomeScore,
@@ -170,16 +214,28 @@ export const updateMatchScore = async (req: Request, res: Response) => {
         awayScore
       );
 
+      // Update prediction points
       await prisma.prediction.update({
         where: { id: prediction.id },
-        data: { totalPoints: points }
+        data: {
+          totalPoints: points,
+          isProcessed: true,
+          status: 'COMPLETED'
+        }
       });
+
+      // Update group points for this user
+      await pointsUpdateService.updateGroupPoints(
+        prediction.userId,
+        matchData.leagueId,
+        points
+      );
     }
 
     res.json({
       success: true,
       data: match,
-      message: `Updated ${predictions.length} predictions`
+      message: `Updated ${predictions.length} predictions and group points`
     });
   } catch (error: any) {
     res.status(500).json({

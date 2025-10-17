@@ -105,6 +105,7 @@ model League {
   matches     Match[]
   tables      Table[]
   gameWeeks   GameWeek[]
+  groups      Group[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -356,21 +357,28 @@ model Group {
   description     String?       @db.Text
   code            String        @unique @default(cuid())
   isPrivate       Boolean       @default(false)
+  isPublic        Boolean       @default(false)  // Mark official public groups
   joinCode        String?       @unique
   maxMembers      Int           @default(50)
   owner           User          @relation(fields: [ownerId], references: [id])
   ownerId         Int
   logoUrl         String?
 
+  // League and team filtering
+  leagueId        Int?          // NULL for cross-league private groups, SET for public groups
+  league          League?       @relation(fields: [leagueId], references: [id])
+  allowedTeamIds  Int[]         // Array of team IDs (empty = all teams, populated = specific teams)
+
   // Relations
   members         GroupMember[]
-  leaderboard     GroupLeaderboard[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   @@index([code])
   @@index([joinCode])
+  @@index([leagueId])
+  @@index([isPublic])
 }
 
 model GroupMember {
@@ -380,31 +388,19 @@ model GroupMember {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          Int
   role            GroupRole @default(MEMBER)
-  collectedPoints Int       @default(0)
-  lastPointDate   DateTime?
+
+  // League-specific points tracking
+  pointsByLeague  Json      @default("{}")  // {"1": 30, "2": 20, "3": 15, "4": 10}
+  totalPoints     Int       @default(0)     // Sum of all league points or filtered points
+
   joinedAt        DateTime  @default(now())
+  lastUpdated     DateTime  @updatedAt
 
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
 }
 
-model GroupLeaderboard {
-  id          Int      @id @default(autoincrement())
-  groupId     Int
-  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId      Int
-  weekNumber  Int?
-  monthNumber Int?
-  season      String?
-  points      Int      @default(0)
-  rank        Int
-  updatedAt   DateTime @updatedAt
-
-  @@index([groupId, weekNumber])
-  @@index([groupId, monthNumber])
-  @@index([groupId, season])
-}
 
 // ==================== GAMIFICATION ====================
 model Achievement {
