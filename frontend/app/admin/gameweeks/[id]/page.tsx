@@ -467,7 +467,7 @@ export default function GameWeekDetailPage() {
   // Show loading while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Loading...</p>
@@ -482,7 +482,7 @@ export default function GameWeekDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Loading gameweek...</p>
@@ -493,7 +493,7 @@ export default function GameWeekDetailPage() {
 
   if (!gameWeek) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">GameWeek not found</p>
           <Link href="/admin/gameweeks">
@@ -511,41 +511,7 @@ export default function GameWeekDetailPage() {
   const isCompleted = gameWeek.status?.toUpperCase() === 'COMPLETED';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Admin Submenu */}
-      <div className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-2 py-2 overflow-x-auto">
-            <Link href="/admin">
-              <Button variant="ghost" size="sm">
-                🏠 Dashboard
-              </Button>
-            </Link>
-            <Link href={`/admin/gameweeks${gameWeek ? `?league=${gameWeek.league.id}` : ''}`}>
-              <Button variant="default" size="sm">
-                📅 Manage GameWeeks
-              </Button>
-            </Link>
-            <Link href="/admin/matches">
-              <Button variant="ghost" size="sm">
-                ⚽ Manage Matches
-              </Button>
-            </Link>
-            <Link href="/admin/matches/bulk-import">
-              <Button variant="ghost" size="sm">
-                📋 Bulk Import
-              </Button>
-            </Link>
-            <Link href="/admin/standings">
-              <Button variant="ghost" size="sm">
-                📊 Update Standings
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-8">
           <Link href={`/admin/gameweeks${gameWeek ? `?league=${gameWeek.league.id}` : ''}`}>
@@ -1147,6 +1113,6 @@ export default function GameWeekDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   );
 }

@@ -52,56 +52,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Admin Submenu */}
-      <div className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-2 py-2 overflow-x-auto">
-            <Link href="/admin">
-              <Button variant="ghost" size="sm">
-                Dashboard
-              </Button>
-            </Link>
-            <Link href="/admin/leagues">
-              <Button variant="ghost" size="sm">
-                Manage Leagues
-              </Button>
-            </Link>
-            <Link href="/admin/gameweeks">
-              <Button variant="ghost" size="sm">
-                Manage GameWeeks
-              </Button>
-            </Link>
-            <Link href="/admin/matches">
-              <Button variant="ghost" size="sm">
-                Manage Matches
-              </Button>
-            </Link>
-            <Link href="/admin/matches/bulk-import">
-              <Button variant="ghost" size="sm">
-                Bulk Import
-              </Button>
-            </Link>
-            <Link href="/admin/standings">
-              <Button variant="ghost" size="sm">
-                Update Standings
-              </Button>
-            </Link>
-            <Link href="/admin/predictions">
-              <Button variant="ghost" size="sm">
-                Predictions
-              </Button>
-            </Link>
-            <Link href="/admin/settings">
-              <Button variant="ghost" size="sm">
-                Settings
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
             Admin Dashboard
@@ -215,6 +166,5 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </main>
-    </div>
   );
 }
