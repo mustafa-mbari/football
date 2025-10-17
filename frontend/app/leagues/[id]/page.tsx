@@ -189,7 +189,18 @@ function LeagueContent() {
     const now = new Date();
     const kickoff = new Date(matchDate);
     const hoursDifference = (kickoff.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursDifference < predictionDeadlineHours;
+    const isLocked = hoursDifference < predictionDeadlineHours;
+
+    // Debug logging
+    console.log('Prediction Lock Check:', {
+      now: now.toISOString(),
+      kickoff: kickoff.toISOString(),
+      hoursDifference: hoursDifference.toFixed(2),
+      deadlineHours: predictionDeadlineHours,
+      isLocked
+    });
+
+    return isLocked;
   };
 
   const getDeadlineTime = (matchDate: string): string => {
@@ -412,13 +423,29 @@ function LeagueContent() {
                     : ` ${currentGameWeek._count.matches} matches`}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                  Prediction Deadline
-                </p>
-                <p className="text-sm text-blue-800 dark:text-blue-400">
-                  <strong>{predictionDeadlineHours} hour{predictionDeadlineHours !== 1 ? 's' : ''}</strong> before kickoff
-                </p>
+              <div className="text-right space-y-2">
+                <div>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    Current Time
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-400">
+                    <strong>{new Date().toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}</strong>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    Prediction Deadline
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-400">
+                    <strong>{predictionDeadlineHours} hour{predictionDeadlineHours !== 1 ? 's' : ''}</strong> before kickoff
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -557,37 +584,23 @@ function LeagueContent() {
                                 )}
                               </div>
                             </div>
-                          ) : !isFinished ? (
+                          ) : !isFinished && userPrediction ? (
                             <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                                 Your Prediction:
                               </span>
                               <div className="flex items-center gap-2">
-                                {userPrediction ? (
-                                  <>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
-                                        {userPrediction.predictedHomeScore}
-                                      </span>
-                                    </div>
-                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
-                                        {userPrediction.predictedAwayScore}
-                                      </span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
-                                    </div>
-                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
-                                    </div>
-                                  </>
-                                )}
+                                <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold">
+                                    {userPrediction.predictedHomeScore}
+                                  </span>
+                                </div>
+                                <span className="text-xl font-bold text-slate-600 dark:text-slate-400">-</span>
+                                <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold">
+                                    {userPrediction.predictedAwayScore}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ) : null}

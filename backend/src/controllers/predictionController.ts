@@ -33,7 +33,26 @@ export const createPrediction = async (req: Request, res: Response) => {
       });
     }
 
-    if (new Date(match.matchDate) < new Date()) {
+    // Fetch prediction deadline setting
+    const deadlineSetting = await prisma.appSettings.findUnique({
+      where: { key: 'PREDICTION_DEADLINE_HOURS' }
+    });
+
+    const deadlineHours = deadlineSetting ? parseInt(deadlineSetting.value) : 4; // Default to 4 hours
+    const now = new Date();
+    const kickoff = new Date(match.matchDate);
+    const deadline = new Date(kickoff.getTime() - deadlineHours * 60 * 60 * 1000);
+
+    // Check if prediction deadline has passed
+    if (now > deadline) {
+      return res.status(400).json({
+        success: false,
+        message: `Predictions are locked ${deadlineHours} hour${deadlineHours !== 1 ? 's' : ''} before kickoff. Deadline was ${deadline.toLocaleString()}`
+      });
+    }
+
+    // Also check if match has already started (as a backup check)
+    if (kickoff < now) {
       return res.status(400).json({
         success: false,
         message: 'Cannot predict for matches that have already started'
