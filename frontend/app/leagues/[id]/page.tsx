@@ -453,7 +453,7 @@ function LeagueContent() {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-3">
           {matches.length === 0 ? (
             <p className="text-center text-slate-600 dark:text-slate-400">No matches in this gameweek</p>
           ) : (
@@ -466,7 +466,7 @@ function LeagueContent() {
 
               return (
                 <Card key={match.id} className={isLocked && !isFinished ? 'border-orange-300 dark:border-orange-700' : ''}>
-                  <CardHeader className="pb-3 sm:pb-6">
+                  <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-6">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                       <CardDescription className="text-xs sm:text-sm">
                         {new Date(match.matchDate).toLocaleDateString('en-US', {
@@ -499,8 +499,8 @@ function LeagueContent() {
                       </CardDescription>
                     )}
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
+                  <CardContent className="pt-2 sm:pt-4 pb-3 sm:pb-6">
+                    <div className="space-y-2 sm:space-y-3">
                       {/* Match Display */}
                       <div className="flex items-center justify-between gap-2 sm:gap-4">
                         {/* Home Team */}
@@ -641,7 +641,7 @@ function LeagueContent() {
                               handleChangeClick(match.id, userPrediction);
                             }
                           }}
-                          className="w-full sm:hidden"
+                          className="w-full sm:hidden h-9"
                         >
                           {isEditing ? 'Update Prediction' : userPrediction ? 'Change Prediction' : 'Make Prediction'}
                         </Button>
@@ -649,7 +649,7 @@ function LeagueContent() {
 
                       {/* User Prediction Display - Only show when finished */}
                       {userPrediction && isFinished && (
-                        <div className="border-t pt-4 space-y-2">
+                        <div className="border-t pt-2 sm:pt-3 space-y-1 sm:space-y-2">
                           <div className="flex justify-between items-center text-sm">
                             <span className="font-medium text-slate-700 dark:text-slate-300">
                               Your Prediction:
@@ -684,7 +684,7 @@ function LeagueContent() {
 
                       {/* Show message if no prediction and locked */}
                       {!userPrediction && !canPredict && !isFinished && (
-                        <div className="border-t pt-4 text-sm text-center text-slate-500 dark:text-slate-400">
+                        <div className="border-t pt-2 sm:pt-3 text-xs sm:text-sm text-center text-slate-500 dark:text-slate-400">
                           No prediction made (0 - 0)
                         </div>
                       )}
