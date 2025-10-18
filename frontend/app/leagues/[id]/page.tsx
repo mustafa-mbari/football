@@ -539,17 +539,121 @@ function LeagueContent() {
                   </CardHeader>
                   <CardContent className="pt-2 sm:pt-4 pb-3 sm:pb-6">
                     <div className="space-y-2 sm:space-y-3">
-                      {/* Match Display */}
-                      <div className="flex items-center justify-between gap-2 sm:gap-4">
+                      {/* Mobile Match Display - 3 columns */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-start sm:hidden">
+                        {/* Home Team - Column 1 */}
+                        <div className="flex flex-col items-center gap-0.5">
+                          {getTeamLogo(match.homeTeam)}
+                          <p className="font-semibold text-[9px] text-center w-full leading-tight break-words hyphens-auto" style={{wordBreak: 'break-word'}}>{match.homeTeam.name}</p>
+                        </div>
+
+                        {/* Score/Prediction - Column 2 (Center) */}
+                        <div className="flex flex-col items-center gap-0.5 px-1">
+                          {/* Real Score */}
+                          {isFinished ? (
+                            <div className="text-sm font-bold text-green-700 dark:text-green-500">
+                              {match.homeScore ?? 0}-{match.awayScore ?? 0}
+                            </div>
+                          ) : match.homeScore !== null && match.homeScore !== undefined ? (
+                            <div className="text-sm font-bold text-green-700 dark:text-green-500">
+                              {match.homeScore}-{match.awayScore ?? 0}
+                            </div>
+                          ) : (
+                            <div className="text-sm font-bold text-blue-700 dark:text-blue-400">
+                              ?-?
+                            </div>
+                          )}
+
+                          {/* Prediction */}
+                          {canPredict ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[7px] font-medium text-blue-700 dark:text-blue-400 uppercase">Predict</span>
+                              <div className="flex items-center gap-0.5">
+                                {isEditing ? (
+                                  <>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      className="w-8 h-6 text-center text-orange-600 dark:text-orange-400 font-semibold text-xs p-0 border-orange-400"
+                                      placeholder="0"
+                                      value={predictions[match.id]?.home || ''}
+                                      onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
+                                    />
+                                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400">-</span>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      className="w-8 h-6 text-center text-orange-600 dark:text-orange-400 font-semibold text-xs p-0 border-orange-400"
+                                      placeholder="0"
+                                      value={predictions[match.id]?.away || ''}
+                                      onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
+                                    />
+                                  </>
+                                ) : userPrediction ? (
+                                  <>
+                                    <div className="w-8 h-6 flex items-center justify-center border rounded bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold text-xs">
+                                        {userPrediction.predictedHomeScore}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-8 h-6 flex items-center justify-center border rounded bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 font-semibold text-xs">
+                                        {userPrediction.predictedAwayScore}
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-8 h-6 flex items-center justify-center border rounded bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-xs">?</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-blue-700 dark:text-blue-400">-</span>
+                                    <div className="w-8 h-6 flex items-center justify-center border rounded bg-white dark:bg-slate-800">
+                                      <span className="text-blue-700 dark:text-blue-400 text-xs">?</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ) : !isFinished && userPrediction ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[7px] font-medium text-slate-600 dark:text-slate-400 uppercase">Predict</span>
+                              <div className="flex items-center gap-0.5">
+                                <div className="w-8 h-6 flex items-center justify-center border rounded bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                                    {userPrediction.predictedHomeScore}
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">-</span>
+                                <div className="w-8 h-6 flex items-center justify-center border rounded bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                                    {userPrediction.predictedAwayScore}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Away Team - Column 3 */}
+                        <div className="flex flex-col items-center gap-0.5">
+                          {getTeamLogo(match.awayTeam)}
+                          <p className="font-semibold text-[9px] text-center w-full leading-tight break-words hyphens-auto" style={{wordBreak: 'break-word'}}>{match.awayTeam.name}</p>
+                        </div>
+                      </div>
+
+                      {/* Desktop Match Display - Original unchanged layout */}
+                      <div className="hidden sm:flex items-center justify-between gap-4">
                         {/* Home Team */}
-                        <div className="flex-1 flex sm:flex-row flex-col sm:items-center items-end justify-end gap-1 sm:gap-3">
-                          <p className="font-semibold text-xs sm:text-base text-right truncate sm:order-1 order-2">{match.homeTeam.name}</p>
-                          <div className="order-1 sm:order-2">{getTeamLogo(match.homeTeam)}</div>
+                        <div className="flex-1 flex items-center justify-end gap-3">
+                          <p className="font-semibold text-base text-right truncate">{match.homeTeam.name}</p>
+                          {getTeamLogo(match.homeTeam)}
                         </div>
 
                         {/* Score/Input Section */}
-                        <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                          {/* Real Result - show for all matches */}
+                        <div className="flex flex-col items-center gap-2">
+                          {/* Real Result */}
                           {isFinished ? (
                             <div className="text-lg font-bold text-green-700 dark:text-green-500">
                               {match.homeScore ?? 0} - {match.awayScore ?? 0}
@@ -647,9 +751,9 @@ function LeagueContent() {
                         </div>
 
                         {/* Away Team */}
-                        <div className="flex-1 flex sm:flex-row flex-col sm:items-center items-start gap-1 sm:gap-3">
+                        <div className="flex-1 flex items-center gap-3">
                           {getTeamLogo(match.awayTeam)}
-                          <p className="font-semibold text-xs sm:text-base text-left truncate">{match.awayTeam.name}</p>
+                          <p className="font-semibold text-base truncate">{match.awayTeam.name}</p>
                         </div>
 
                         {/* Desktop Predict Button */}
