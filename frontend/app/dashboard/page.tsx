@@ -32,8 +32,16 @@ interface Prediction {
     status: string;
     homeScore?: number;
     awayScore?: number;
-    homeTeam: { name: string };
-    awayTeam: { name: string };
+    homeTeam: {
+      name: string;
+      shortName?: string;
+      logoUrl?: string;
+    };
+    awayTeam: {
+      name: string;
+      shortName?: string;
+      logoUrl?: string;
+    };
     league: { name: string };
   };
 }
@@ -42,6 +50,7 @@ interface League {
   id: number;
   name: string;
   logoUrl?: string;
+  priority: number;
 }
 
 interface Group {
@@ -107,7 +116,13 @@ function DashboardContent() {
         const publicGroupsData = publicGroupsResponse.data.data;
         setPublicGroups(publicGroupsData);
         if (publicGroupsData.length > 0) {
-          setSelectedLeague(publicGroupsData[0].leagueId || null);
+          // Sort groups by league priority and select the one with priority 1 (or lowest priority)
+          const sortedGroups = [...publicGroupsData].sort((a, b) => {
+            const priorityA = a.league?.priority ?? 999;
+            const priorityB = b.league?.priority ?? 999;
+            return priorityA - priorityB;
+          });
+          setSelectedLeague(sortedGroups[0].leagueId || null);
         }
 
         // Set private groups
@@ -262,11 +277,17 @@ function DashboardContent() {
                       <SelectValue placeholder="Select a league" />
                     </SelectTrigger>
                     <SelectContent>
-                      {publicGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.leagueId?.toString() || ''}>
-                          {group.league?.name || group.name}
-                        </SelectItem>
-                      ))}
+                      {publicGroups
+                        .sort((a, b) => {
+                          const priorityA = a.league?.priority ?? 999;
+                          const priorityB = b.league?.priority ?? 999;
+                          return priorityA - priorityB;
+                        })
+                        .map((group) => (
+                          <SelectItem key={group.id} value={group.leagueId?.toString() || ''}>
+                            {group.league?.name || group.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -423,21 +444,33 @@ function DashboardContent() {
             ) : (
               <div className="space-y-4">
                 {recentPredictions.map((prediction) => (
-                  <div key={prediction.id} className="border-b pb-4 last:border-b-0">
-                    <div className="flex justify-between items-start mb-2">
+                  <div
+                    key={prediction.id}
+                    className="group relative bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50
+                               rounded-xl p-4 border border-slate-200 dark:border-slate-700
+                               hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700
+                               transition-all duration-300"
+                  >
+                    {/* League and Date Header */}
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-semibold text-sm text-slate-600 dark:text-slate-400">
+                        <p className="font-semibold text-xs text-slate-600 dark:text-slate-400">
                           {prediction.match.league.name}
                         </p>
-                        <p className="text-xs text-slate-500">
-                          {new Date(prediction.match.matchDate).toLocaleDateString()}
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          {new Date(prediction.match.matchDate).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </p>
                       </div>
                       {prediction.match.status === 'FINISHED' && prediction.totalPoints !== null && (
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${
-                          prediction.totalPoints >= 5 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          prediction.totalPoints > 0 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                          prediction.totalPoints >= 5 ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' :
+                          prediction.totalPoints > 0 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white' :
+                          'bg-gradient-to-r from-red-500 to-red-600 text-white'
                         }`}>
                           {prediction.totalPoints >= 5 && '🎯 '}
                           {prediction.totalPoints > 0 && prediction.totalPoints < 5 && '✓ '}
@@ -446,17 +479,151 @@ function DashboardContent() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{prediction.match.homeTeam.name}</span>
-                      <div className="px-3">
-                        <span className="font-bold">{prediction.predictedHomeScore} - {prediction.predictedAwayScore}</span>
+
+                    {/* Match Display - Desktop & Tablet */}
+                    <div className="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                      {/* Home Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
+                          {prediction.match.homeTeam.logoUrl ? (
+                            <img
+                              src={prediction.match.homeTeam.logoUrl}
+                              alt={prediction.match.homeTeam.name}
+                              className="w-9 h-9 object-contain"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                            {prediction.match.homeTeam.name}
+                          </p>
+                          {prediction.match.homeTeam.shortName && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {prediction.match.homeTeam.shortName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Score Section */}
+                      <div className="flex flex-col items-center gap-2 px-6">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            {prediction.predictedHomeScore}
+                          </span>
+                          <span className="text-xl font-semibold text-slate-400 dark:text-slate-600">-</span>
+                          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            {prediction.predictedAwayScore}
+                          </span>
+                        </div>
                         {prediction.match.status === 'FINISHED' && (
-                          <span className="text-xs text-slate-500 ml-2">
-                            ({prediction.match.homeScore} - {prediction.match.awayScore})
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span>Actual:</span>
+                            <span className="font-semibold">
+                              {prediction.match.homeScore} - {prediction.match.awayScore}
+                            </span>
+                          </div>
+                        )}
+                        {prediction.match.status !== 'FINISHED' && (
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            Your Prediction
                           </span>
                         )}
                       </div>
-                      <span className="font-medium text-right">{prediction.match.awayTeam.name}</span>
+
+                      {/* Away Team */}
+                      <div className="flex items-center gap-3 flex-row-reverse">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
+                          {prediction.match.awayTeam.logoUrl ? (
+                            <img
+                              src={prediction.match.awayTeam.logoUrl}
+                              alt={prediction.match.awayTeam.name}
+                              className="w-9 h-9 object-contain"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 text-right">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                            {prediction.match.awayTeam.name}
+                          </p>
+                          {prediction.match.awayTeam.shortName && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {prediction.match.awayTeam.shortName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Match Display - Mobile */}
+                    <div className="sm:hidden flex flex-col gap-3">
+                      {/* Home Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-lg shadow-sm border border-slate-300 dark:border-slate-600">
+                          {prediction.match.homeTeam.logoUrl ? (
+                            <img
+                              src={prediction.match.homeTeam.logoUrl}
+                              alt={prediction.match.homeTeam.name}
+                              className="w-7 h-7 object-contain"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                            {prediction.match.homeTeam.name}
+                          </p>
+                        </div>
+                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400 min-w-[2rem] text-center">
+                          {prediction.predictedHomeScore}
+                        </span>
+                      </div>
+
+                      {/* Away Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-lg shadow-sm border border-slate-300 dark:border-slate-600">
+                          {prediction.match.awayTeam.logoUrl ? (
+                            <img
+                              src={prediction.match.awayTeam.logoUrl}
+                              alt={prediction.match.awayTeam.name}
+                              className="w-7 h-7 object-contain"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                            {prediction.match.awayTeam.name}
+                          </p>
+                        </div>
+                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400 min-w-[2rem] text-center">
+                          {prediction.predictedAwayScore}
+                        </span>
+                      </div>
+
+                      {/* Actual Score for Mobile */}
+                      {prediction.match.status === 'FINISHED' && (
+                        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Actual Score:</span>
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            {prediction.match.homeScore} - {prediction.match.awayScore}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
