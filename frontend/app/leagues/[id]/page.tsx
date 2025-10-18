@@ -325,24 +325,27 @@ function LeagueContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8 flex justify-between items-start">
-          <div className="flex items-center gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
+        {/* Header Section - Stack on mobile */}
+        <div className="mb-6 sm:mb-8">
+          {/* League Title - Always visible */}
+          <div className="flex items-center gap-3 sm:gap-4 mb-4">
             {league.logoUrl && (
-              <img src={league.logoUrl} alt={league.name} className="w-16 h-16 object-contain" />
+              <img src={league.logoUrl} alt={league.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
             )}
-            <div>
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{league.name}</h2>
-              <p className="text-slate-600 dark:text-slate-400">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-1 truncate">{league.name}</h2>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
                 {league.country} • {league.season}
               </p>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          {/* Selectors - Stack on mobile */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             {/* Group Selector */}
             {userGroups.length > 0 && (
-              <div className="w-64">
+              <div className="w-full sm:w-64">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Filter by Group
                 </label>
@@ -364,7 +367,7 @@ function LeagueContent() {
 
             {/* GameWeek Selector */}
             {allGameWeeks.length > 0 && (
-              <div className="w-64">
+              <div className="w-full sm:w-64">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Select GameWeek
                 </label>
@@ -410,40 +413,39 @@ function LeagueContent() {
         )}
 
         {currentGameWeek && (
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex justify-between items-start">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <div>
                 <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
                   GameWeek {currentGameWeek.weekNumber}
                 </h3>
-                <p className="text-sm text-blue-800 dark:text-blue-400">
+                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-400">
                   Status: <strong>{currentGameWeek.status}</strong> •
                   {selectedGroup && selectedGroup.allowedTeamIds && selectedGroup.allowedTeamIds.length > 0
                     ? ` ${matches.length} filtered matches`
                     : ` ${currentGameWeek._count.matches} matches`}
                 </p>
               </div>
-              <div className="text-right space-y-2">
-                <div>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+              <div className="flex flex-row sm:flex-col gap-4 sm:gap-2 sm:text-right text-xs sm:text-sm">
+                <div className="flex-1 sm:flex-none">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
                     Current Time
                   </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-400">
-                    <strong>{new Date().toLocaleString('en-US', {
+                  <p className="text-blue-800 dark:text-blue-400">
+                    <strong className="text-xs sm:text-sm">{new Date().toLocaleString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
+                      minute: '2-digit'
                     })}</strong>
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                    Prediction Deadline
+                <div className="flex-1 sm:flex-none">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
+                    Deadline
                   </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-400">
-                    <strong>{predictionDeadlineHours} hour{predictionDeadlineHours !== 1 ? 's' : ''}</strong> before kickoff
+                  <p className="text-blue-800 dark:text-blue-400">
+                    <strong className="text-xs sm:text-sm">{predictionDeadlineHours}h before kickoff</strong>
                   </p>
                 </div>
               </div>
@@ -464,9 +466,9 @@ function LeagueContent() {
 
               return (
                 <Card key={match.id} className={isLocked && !isFinished ? 'border-orange-300 dark:border-orange-700' : ''}>
-                  <CardHeader>
-                    <div className="flex justify-between items-center flex-wrap gap-2">
-                      <CardDescription>
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                      <CardDescription className="text-xs sm:text-sm">
                         {new Date(match.matchDate).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -477,22 +479,22 @@ function LeagueContent() {
                           minute: '2-digit'
                         })}
                       </CardDescription>
-                      <div className="flex gap-2">
-                        {isFinished && <Badge variant="secondary">Finished</Badge>}
+                      <div className="flex gap-2 flex-wrap">
+                        {isFinished && <Badge variant="secondary" className="text-xs">Finished</Badge>}
                         {isLocked && !isFinished && (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">
                             Locked
                           </Badge>
                         )}
                         {canPredict && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
                             Open
                           </Badge>
                         )}
                       </div>
                     </div>
                     {!isFinished && (
-                      <CardDescription className="text-xs">
+                      <CardDescription className="text-xs mt-1">
                         Predictions close: {getDeadlineTime(match.matchDate)}
                       </CardDescription>
                     )}
@@ -500,11 +502,12 @@ function LeagueContent() {
                   <CardContent>
                     <div className="space-y-4">
                       {/* Match Display */}
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         {/* Home Team */}
-                        <div className="flex-1 flex items-center justify-end gap-3">
-                          <p className="font-semibold text-right">{match.homeTeam.name}</p>
-                          {getTeamLogo(match.homeTeam)}
+                        <div className="flex-1 flex items-center sm:justify-end gap-2 sm:gap-3">
+                          <div className="sm:hidden">{getTeamLogo(match.homeTeam)}</div>
+                          <p className="font-semibold text-sm sm:text-base sm:text-right flex-1 sm:flex-none">{match.homeTeam.name}</p>
+                          <div className="hidden sm:block">{getTeamLogo(match.homeTeam)}</div>
                         </div>
 
                         {/* Score/Input Section */}
@@ -607,9 +610,10 @@ function LeagueContent() {
                         </div>
 
                         {/* Away Team */}
-                        <div className="flex-1 flex items-center gap-3">
-                          {getTeamLogo(match.awayTeam)}
-                          <p className="font-semibold">{match.awayTeam.name}</p>
+                        <div className="flex-1 flex items-center gap-2 sm:gap-3">
+                          <div className="sm:hidden">{getTeamLogo(match.awayTeam)}</div>
+                          <p className="font-semibold text-sm sm:text-base flex-1 sm:flex-none">{match.awayTeam.name}</p>
+                          <div className="hidden sm:block">{getTeamLogo(match.awayTeam)}</div>
                         </div>
 
                         {/* Predict Button */}
@@ -622,12 +626,28 @@ function LeagueContent() {
                                 handleChangeClick(match.id, userPrediction);
                               }
                             }}
-                            className="ml-4"
+                            className="hidden sm:block ml-4"
                           >
                             {isEditing ? 'Update' : userPrediction ? 'Change' : 'Predict'}
                           </Button>
                         )}
                       </div>
+
+                      {/* Mobile-only Predict Button */}
+                      {canPredict && (
+                        <Button
+                          onClick={() => {
+                            if (isEditing) {
+                              handleSubmitPrediction(match.id);
+                            } else {
+                              handleChangeClick(match.id, userPrediction);
+                            }
+                          }}
+                          className="w-full sm:hidden"
+                        >
+                          {isEditing ? 'Update Prediction' : userPrediction ? 'Change Prediction' : 'Make Prediction'}
+                        </Button>
+                      )}
 
                       {/* User Prediction Display - Only show when finished */}
                       {userPrediction && isFinished && (

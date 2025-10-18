@@ -152,7 +152,8 @@ function TablesContent() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
+                    {/* Desktop/Tablet Table View - Hidden on mobile */}
+                    <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="border-b-2 border-slate-200 dark:border-slate-700">
                           <tr className="text-left">
@@ -244,6 +245,117 @@ function TablesContent() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Mobile Card View - Visible only on mobile */}
+                    <div className="sm:hidden space-y-3">
+                      {leagueData.standings.map((standing, index) => (
+                        <div
+                          key={standing.id}
+                          className={`p-4 rounded-lg border ${
+                            index < 4
+                              ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                              : index >= leagueData.standings.length - 3
+                              ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          {/* Position and Team */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                  {standing.position}
+                                </span>
+                                {index < 4 && (
+                                  <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                                )}
+                                {index >= leagueData.standings.length - 3 && (
+                                  <span className="w-1 h-6 bg-red-500 rounded"></span>
+                                )}
+                              </div>
+                              {standing.team.logoUrl && (
+                                <img
+                                  src={standing.team.logoUrl}
+                                  alt={standing.team.name}
+                                  className="w-8 h-8 object-contain flex-shrink-0"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm truncate">
+                                  {standing.team.name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right ml-2">
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {standing.points}
+                              </div>
+                              <div className="text-xs text-slate-500">pts</div>
+                            </div>
+                          </div>
+
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
+                            <div>
+                              <div className="text-slate-500 dark:text-slate-400">P</div>
+                              <div className="font-semibold">{standing.played}</div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500 dark:text-slate-400">W-D-L</div>
+                              <div className="font-semibold">
+                                {standing.won}-{standing.drawn}-{standing.lost}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500 dark:text-slate-400">GF-GA</div>
+                              <div className="font-semibold">
+                                {standing.goalsFor}-{standing.goalsAgainst}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500 dark:text-slate-400">GD</div>
+                              <div
+                                className={`font-semibold ${
+                                  standing.goalDifference > 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : standing.goalDifference < 0
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : ''
+                                }`}
+                              >
+                                {standing.goalDifference > 0 ? '+' : ''}
+                                {standing.goalDifference}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Form and Next Opponent */}
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500 dark:text-slate-400">Form:</span>
+                              {standing.form && (
+                                <div className="flex gap-1">
+                                  {standing.form.split('').slice(-5).map((result, i) => (
+                                    <div key={i}>{getFormIcon(result)}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {standing.nextOpponent && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Next:</span>
+                                <img
+                                  src={standing.nextOpponent.logoUrl}
+                                  alt={standing.nextOpponent.name}
+                                  className="w-5 h-5 object-contain"
+                                  title={standing.nextOpponent.name}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">

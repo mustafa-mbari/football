@@ -308,7 +308,7 @@ function GroupsContent() {
                 Create Private Group
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-2xl max-w-[95vw]">
               <DialogHeader>
                 <DialogTitle>Create Private Group</DialogTitle>
                 <DialogDescription>
@@ -381,7 +381,7 @@ function GroupsContent() {
                       Select Teams (optional - leave empty for all teams)
                       {isCrossLeague && <span className="text-blue-600 ml-2">All Leagues</span>}
                     </Label>
-                    <div className="grid grid-cols-1 gap-2 mt-2 max-h-96 overflow-y-auto border rounded p-3">
+                    <div className="grid grid-cols-1 gap-2 mt-2 max-h-64 sm:max-h-96 overflow-y-auto border rounded p-3">
                       {isCrossLeague ? (
                         // Group by league for cross-league mode
                         Object.entries(
@@ -396,7 +396,7 @@ function GroupsContent() {
                             <div className="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-2 sticky top-0 bg-white dark:bg-slate-900 py-1">
                               {leagueName}
                             </div>
-                            <div className="grid grid-cols-2 gap-2 pl-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
                               {leagueTeams.map((team) => (
                                 <div key={team.id} className="flex items-center space-x-2">
                                   <Checkbox
@@ -417,7 +417,7 @@ function GroupsContent() {
                         ))
                       ) : (
                         // Single league mode
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {teams.map((team) => (
                             <div key={team.id} className="flex items-center space-x-2">
                               <Checkbox
@@ -627,11 +627,12 @@ function GroupsContent() {
                         </Link>
 
                         {group.owner?.id === user?.id && (
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditGroup(group)}
+                              className="w-full"
                             >
                               Edit
                             </Button>
@@ -639,6 +640,7 @@ function GroupsContent() {
                               variant="destructive"
                               size="sm"
                               onClick={() => handleDeleteGroup(group.id, group.name)}
+                              className="w-full"
                             >
                               Delete
                             </Button>
