@@ -693,53 +693,45 @@ function LeagueContent() {
 
                           {/* Center Score/Prediction Section */}
                           <div className="flex flex-col items-center gap-4 px-8 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-slate-200 dark:border-slate-700 min-w-[280px]">
-                            {/* Match Score */}
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                {isFinished ? 'Final Score' : 'Match Score'}
-                              </span>
-                              <div className="flex items-center gap-3">
-                                {isFinished ? (
-                                  <>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                      <span className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                        {match.homeScore ?? 0}
-                                      </span>
-                                    </div>
-                                    <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                      <span className="text-2xl font-bold text-green-700 dark:text-green-400">
-                                        {match.awayScore ?? 0}
-                                      </span>
-                                    </div>
-                                  </>
-                                ) : match.homeScore !== null && match.homeScore !== undefined ? (
-                                  <>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                      <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
-                                        {match.homeScore}
-                                      </span>
-                                    </div>
-                                    <div className="w-8 h-1 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                      <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
-                                        {match.awayScore ?? 0}
-                                      </span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600">
-                                      <span className="text-2xl font-bold text-slate-400 dark:text-slate-500">?</span>
-                                    </div>
-                                    <div className="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
-                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600">
-                                      <span className="text-2xl font-bold text-slate-400 dark:text-slate-500">?</span>
-                                    </div>
-                                  </>
-                                )}
+                            {/* Match Score - Only show for finished or in-progress matches */}
+                            {!canPredict && (
+                              <div className="flex flex-col items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                  {isFinished ? 'Final Score' : 'Match Score'}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  {isFinished ? (
+                                    <>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                        <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                          {match.homeScore ?? 0}
+                                        </span>
+                                      </div>
+                                      <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                        <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                          {match.awayScore ?? 0}
+                                        </span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                        <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                          {match.homeScore ?? 0}
+                                        </span>
+                                      </div>
+                                      <div className="w-8 h-1 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                        <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                          {match.awayScore ?? 0}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {/* Prediction Section */}
                             {canPredict ? (
