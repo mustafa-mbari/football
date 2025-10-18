@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { leaderboardApi, predictionsApi, groupsApi, leaguesApi } from '@/lib/api';
+import { leaderboardApi, predictionsApi, groupsApi, leaguesApi, matchesApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -46,6 +46,26 @@ interface Prediction {
   };
 }
 
+interface Match {
+  id: number;
+  matchDate: string;
+  status: string;
+  weekNumber: number;
+  homeScore?: number;
+  awayScore?: number;
+  homeTeam: {
+    name: string;
+    shortName?: string;
+    logoUrl?: string;
+  };
+  awayTeam: {
+    name: string;
+    shortName?: string;
+    logoUrl?: string;
+  };
+  league: { name: string };
+}
+
 interface League {
   id: number;
   name: string;
@@ -76,6 +96,7 @@ function DashboardContent() {
   // Stats and predictions
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentPredictions, setRecentPredictions] = useState<Prediction[]>([]);
+  const [finishedMatches, setFinishedMatches] = useState<Match[]>([]);
 
   // Public groups leaderboard
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -94,12 +115,13 @@ function DashboardContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsResponse, predictionsResponse, leaguesResponse, publicGroupsResponse, userGroupsResponse] = await Promise.all([
+        const [statsResponse, predictionsResponse, leaguesResponse, publicGroupsResponse, userGroupsResponse, finishedMatchesResponse] = await Promise.all([
           leaderboardApi.getUserStats(),
           predictionsApi.getUserPredictions(),
           leaguesApi.getAll(),
           groupsApi.getPublic(),
           groupsApi.getUserGroups(),
+          matchesApi.getAll(undefined, 'FINISHED'),
         ]);
 
         setStats(statsResponse.data.data);
@@ -107,6 +129,13 @@ function DashboardContent() {
         // Get only the 5 most recent predictions
         const allPredictions = predictionsResponse.data.data;
         setRecentPredictions(allPredictions.slice(0, 5));
+
+        // Get only the 5 most recent finished matches, sorted by match date (most recent first)
+        const allFinishedMatches = finishedMatchesResponse.data.data;
+        const sortedFinishedMatches = allFinishedMatches.sort((a: Match, b: Match) => {
+          return new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime();
+        });
+        setFinishedMatches(sortedFinishedMatches.slice(0, 5));
 
         // Set leagues
         const leaguesData = leaguesResponse.data.data;
@@ -214,46 +243,80 @@ function DashboardContent() {
 
         {/* Stats Cards Grid */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-blue-100">Total Points</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{stats.totalPoints}</div>
+          <>
+            {/* Mobile: Single Compact Card */}
+            <Card className="md:hidden mb-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              <CardContent className="pt-4 pb-4">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Total Points */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
+                    <p className="text-[10px] text-blue-100 mb-0.5">Total Points</p>
+                    <p className="text-lg font-bold">{stats.totalPoints}</p>
+                  </div>
+
+                  {/* Exact Scores */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
+                    <p className="text-[10px] text-green-100 mb-0.5">Exact Scores</p>
+                    <p className="text-lg font-bold">{stats.exactScores}</p>
+                  </div>
+
+                  {/* Correct Outcomes */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
+                    <p className="text-[10px] text-yellow-100 mb-0.5">Correct Outcomes</p>
+                    <p className="text-lg font-bold">{stats.correctOutcomes}</p>
+                  </div>
+
+                  {/* Accuracy */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
+                    <p className="text-[10px] text-purple-100 mb-0.5">Accuracy</p>
+                    <p className="text-lg font-bold">{accuracy}%</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-green-100">Exact Scores</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{stats.exactScores}</div>
-                <p className="text-sm text-green-100 mt-1">Perfect predictions</p>
-              </CardContent>
-            </Card>
+            {/* Desktop: Four Separate Cards */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-blue-100">Total Points</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold">{stats.totalPoints}</div>
+                </CardContent>
+              </Card>
 
-            <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-yellow-100">Correct Outcomes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{stats.correctOutcomes}</div>
-                <p className="text-sm text-yellow-100 mt-1">Close predictions</p>
-              </CardContent>
-            </Card>
+              <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-green-100">Exact Scores</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold">{stats.exactScores}</div>
+                  <p className="text-sm text-green-100 mt-1">Perfect predictions</p>
+                </CardContent>
+              </Card>
 
-            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-purple-100">Accuracy</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{accuracy}%</div>
-                <p className="text-sm text-purple-100 mt-1">Win rate</p>
-              </CardContent>
-            </Card>
-          </div>
+              <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-yellow-100">Correct Outcomes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold">{stats.correctOutcomes}</div>
+                  <p className="text-sm text-yellow-100 mt-1">Close predictions</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                <CardHeader className="pb-2">
+                  <CardDescription className="text-purple-100">Accuracy</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-bold">{accuracy}%</div>
+                  <p className="text-sm text-purple-100 mt-1">Win rate</p>
+                </CardContent>
+              </Card>
+            </div>
+          </>
         )}
 
         {/* Two Leaderboard Cards */}
@@ -416,22 +479,24 @@ function DashboardContent() {
           </Card>
         </div>
 
-        {/* Recent Predictions */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Recent Predictions</CardTitle>
-                <CardDescription>Your last 5 predictions</CardDescription>
+        {/* Recent Predictions and Last Match Results - Desktop Horizontal Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Recent Predictions */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Recent Predictions</CardTitle>
+                  <CardDescription>Your last 5 predictions</CardDescription>
+                </div>
+                <Link href="/profile">
+                  <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                    View All
+                  </button>
+                </Link>
               </div>
-              <Link href="/profile">
-                <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                  View All
-                </button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             {recentPredictions.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-600 dark:text-slate-400 mb-4">No predictions yet</p>
@@ -632,15 +697,260 @@ function DashboardContent() {
           </CardContent>
         </Card>
 
+        {/* Last Match Results */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Last Match Results</CardTitle>
+              <CardDescription>Recent finished matches</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {finishedMatches.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-slate-600 dark:text-slate-400">No finished matches yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {finishedMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    className="group relative bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50
+                               rounded-xl p-4 border border-slate-200 dark:border-slate-700
+                               hover:shadow-lg hover:border-green-300 dark:hover:border-green-700
+                               transition-all duration-300"
+                  >
+                    {/* League and Date Header */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="font-semibold text-xs text-slate-600 dark:text-slate-400">
+                          {match.league.name}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          {new Date(match.matchDate).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <span className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm bg-gradient-to-r from-slate-500 to-slate-600 text-white">
+                        W {match.weekNumber}
+                      </span>
+                    </div>
+
+                    {/* Match Display - Desktop & Tablet */}
+                    <div className="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                      {/* Home Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
+                          {match.homeTeam.logoUrl ? (
+                            <img
+                              src={match.homeTeam.logoUrl}
+                              alt={match.homeTeam.name}
+                              className="w-9 h-9 object-contain"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                            {match.homeTeam.name}
+                          </p>
+                          {match.homeTeam.shortName && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {match.homeTeam.shortName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Score Section */}
+                      <div className="flex flex-col items-center gap-2 px-6">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {match.homeScore ?? 0}
+                          </span>
+                          <span className="text-xl font-semibold text-slate-400 dark:text-slate-600">-</span>
+                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {match.awayScore ?? 0}
+                          </span>
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          Final Score
+                        </span>
+                      </div>
+
+                      {/* Away Team */}
+                      <div className="flex items-center gap-3 flex-row-reverse">
+                        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
+                          {match.awayTeam.logoUrl ? (
+                            <img
+                              src={match.awayTeam.logoUrl}
+                              alt={match.awayTeam.name}
+                              className="w-9 h-9 object-contain"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 text-right">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                            {match.awayTeam.name}
+                          </p>
+                          {match.awayTeam.shortName && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {match.awayTeam.shortName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Match Display - Mobile */}
+                    <div className="sm:hidden flex flex-col gap-3">
+                      {/* Home Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-lg shadow-sm border border-slate-300 dark:border-slate-600">
+                          {match.homeTeam.logoUrl ? (
+                            <img
+                              src={match.homeTeam.logoUrl}
+                              alt={match.homeTeam.name}
+                              className="w-7 h-7 object-contain"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                            {match.homeTeam.name}
+                          </p>
+                        </div>
+                        <span className="text-xl font-bold text-slate-900 dark:text-white min-w-[2rem] text-center">
+                          {match.homeScore ?? 0}
+                        </span>
+                      </div>
+
+                      {/* Away Team */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center
+                                      bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
+                                      rounded-lg shadow-sm border border-slate-300 dark:border-slate-600">
+                          {match.awayTeam.logoUrl ? (
+                            <img
+                              src={match.awayTeam.logoUrl}
+                              alt={match.awayTeam.name}
+                              className="w-7 h-7 object-contain"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                            {match.awayTeam.name}
+                          </p>
+                        </div>
+                        <span className="text-xl font-bold text-slate-900 dark:text-white min-w-[2rem] text-center">
+                          {match.awayScore ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
         {/* Scoring System Info */}
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Scoring System</h3>
-          <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
-            <li>🎯 <strong>9 points</strong> - Perfect prediction (exact score + bonus)</li>
-            <li>✓ <strong>3-6 points</strong> - Partial points (correct elements)</li>
-            <li>✗ <strong>0 points</strong> - Incorrect prediction</li>
-          </ul>
-        </div>
+        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-200 dark:border-indigo-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300">
+              <span className="text-2xl">🎯</span>
+              Points Scoring System
+            </CardTitle>
+            <CardDescription className="text-indigo-700 dark:text-indigo-400">
+              How predictions are scored
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Exact Score */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🏆</span>
+                  <h4 className="font-bold text-green-700 dark:text-green-400">Exact Score</h4>
+                </div>
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">9 pts</div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  1 pt (home) + 1 pt (away) + 2 pts (total goals) + 3 pts (result) + 3 pts (bonus)
+                </p>
+              </div>
+
+              {/* Correct Result + Partial */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-yellow-200 dark:border-yellow-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">✓</span>
+                  <h4 className="font-bold text-yellow-700 dark:text-yellow-400">Partial Match</h4>
+                </div>
+                <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">3-6 pts</div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Points for correct result (3), total goals (2), or exact team scores (1 each)
+                </p>
+              </div>
+
+              {/* No Match */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">✗</span>
+                  <h4 className="font-bold text-red-700 dark:text-red-400">No Match</h4>
+                </div>
+                <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">0 pts</div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Incorrect prediction with no matching elements
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Breakdown */}
+            <div className="mt-6 pt-6 border-t border-indigo-200 dark:border-indigo-800">
+              <h5 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-3 text-sm">Point Breakdown:</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold">1</span>
+                  Exact home team score
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold">1</span>
+                  Exact away team score
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs font-bold">2</span>
+                  Correct total goals
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-bold">3</span>
+                  Correct match result
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <span className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 flex items-center justify-center text-xs font-bold">3</span>
+                  Exact score bonus
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
