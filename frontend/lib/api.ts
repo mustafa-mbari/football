@@ -1,6 +1,18 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7070/api';
+// Determine API URL based on the current host
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If accessing via network IP, use that IP for API calls
+    if (hostname === '192.168.178.24') {
+      return 'http://192.168.178.24:7070/api';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7070/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -119,7 +131,7 @@ export const groupsApi = {
   create: (data: {
     name: string;
     description?: string;
-    leagueId: number;
+    leagueId?: number;
     allowedTeamIds?: number[];
     joinCode?: string;
   }) => api.post('/groups', data),
@@ -128,6 +140,7 @@ export const groupsApi = {
   getPublic: () => api.get('/groups/public'),
   getUserGroups: () => api.get('/groups/user'),
   getById: (id: number) => api.get(`/groups/${id}`),
+  getByCode: (joinCode: string) => api.get(`/groups/code/${joinCode}`),
   getLeaderboard: (id: number, leagueId?: number) =>
     api.get(`/groups/${id}/leaderboard`, { params: { leagueId } }),
 
@@ -138,7 +151,22 @@ export const groupsApi = {
     name?: string;
     description?: string;
     maxMembers?: number;
-    allowedTeamIds?: number[];
   }) => api.put(`/groups/${id}`, data),
+  regenerateCode: (id: number) => api.post(`/groups/${id}/regenerate-code`),
+  requestChange: (id: number, data: {
+    changeType: string;
+    requestedValue: any;
+    reason?: string;
+  }) => api.post(`/groups/${id}/request-change`, data),
+  getChangeRequests: (id: number) => api.get(`/groups/${id}/change-requests`),
   delete: (id: number) => api.delete(`/groups/${id}`)
+};
+
+// Change Requests API
+export const changeRequestsApi = {
+  getAll: (status?: string) => api.get('/change-requests', { params: { status } }),
+  approve: (id: number, reviewNote?: string) =>
+    api.post(`/change-requests/${id}/approve`, { reviewNote }),
+  reject: (id: number, reviewNote?: string) =>
+    api.post(`/change-requests/${id}/reject`, { reviewNote })
 };

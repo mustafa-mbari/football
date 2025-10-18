@@ -48,6 +48,7 @@ model User {
   favoriteTeams     UserFavoriteTeam[]
   groups            GroupMember[]
   ownedGroups       Group[]
+  groupChangeRequests GroupChangeRequest[]
 
   // Timestamps
   lastLoginAt       DateTime?
@@ -371,6 +372,7 @@ model Group {
 
   // Relations
   members         GroupMember[]
+  changeRequests  GroupChangeRequest[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -399,6 +401,44 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
+}
+
+model GroupChangeRequest {
+  id              Int                     @id @default(autoincrement())
+  group           Group                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId         Int
+  requestedBy     User                    @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  requestedById   Int
+  reviewedBy      Int?                    // Admin who reviewed
+
+  // What's being changed
+  changeType      GroupChangeType
+  currentValue    Json?                   // Current state
+  requestedValue  Json                    // Requested new state
+  reason          String?                 @db.Text
+
+  // Status
+  status          ChangeRequestStatus     @default(PENDING)
+  reviewNote      String?                 @db.Text
+
+  createdAt       DateTime                @default(now())
+  reviewedAt      DateTime?
+
+  @@index([groupId])
+  @@index([status])
+  @@index([requestedById])
+}
+
+enum GroupChangeType {
+  LEAGUE_CHANGE           // Changing the league
+  TEAM_SELECTION_CHANGE   // Changing allowed teams
+  CROSS_LEAGUE_TOGGLE     // Toggle cross-league mode
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 

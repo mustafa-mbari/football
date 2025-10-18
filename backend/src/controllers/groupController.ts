@@ -14,24 +14,18 @@ export const createGroup = async (req: Request, res: Response) => {
       });
     }
 
-    // Private groups require league selection
-    if (!leagueId) {
-      return res.status(400).json({
-        success: false,
-        message: 'League selection is required for private groups'
+    // Validate league if provided (optional for cross-league private groups)
+    if (leagueId) {
+      const league = await prisma.league.findUnique({
+        where: { id: parseInt(leagueId) }
       });
-    }
 
-    // Validate league exists
-    const league = await prisma.league.findUnique({
-      where: { id: parseInt(leagueId) }
-    });
-
-    if (!league) {
-      return res.status(404).json({
-        success: false,
-        message: 'League not found'
-      });
+      if (!league) {
+        return res.status(404).json({
+          success: false,
+          message: 'League not found'
+        });
+      }
     }
 
     // Validate teams if provided
@@ -39,14 +33,14 @@ export const createGroup = async (req: Request, res: Response) => {
       const teams = await prisma.team.findMany({
         where: {
           id: { in: allowedTeamIds },
-          leagueId: parseInt(leagueId)
+          ...(leagueId && { leagueId: parseInt(leagueId) })
         }
       });
 
       if (teams.length !== allowedTeamIds.length) {
         return res.status(400).json({
           success: false,
-          message: 'Some teams are invalid or not in the selected league'
+          message: 'Some teams are invalid or do not exist'
         });
       }
     }
@@ -61,7 +55,7 @@ export const createGroup = async (req: Request, res: Response) => {
         ownerId: userId,
         isPrivate: true,
         isPublic: false,
-        leagueId: parseInt(leagueId),
+        leagueId: leagueId ? parseInt(leagueId) : null,
         allowedTeamIds: allowedTeamIds || [],
         joinCode: finalJoinCode,
         logoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
@@ -377,6 +371,56 @@ export const getGroupLeaderboard = async (req: Request, res: Response) => {
   }
 };
 
+// Find group by join code
+export const findGroupByCode = async (req: Request, res: Response) => {
+  try {
+    const { joinCode } = req.params;
+
+    const group = await prisma.group.findUnique({
+      where: { joinCode },
+      include: {
+        league: true,
+        owner: {
+          select: {
+            id: true,
+            username: true
+          }
+        },
+        _count: {
+          select: {
+            members: true
+          }
+        }
+      }
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found with this join code'
+      });
+    }
+
+    // Only show private groups info
+    if (!group.isPrivate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid join code'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: group
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Join a group (with join code for private groups)
 export const joinGroup = async (req: Request, res: Response) => {
   try {
@@ -511,12 +555,12 @@ export const leaveGroup = async (req: Request, res: Response) => {
   }
 };
 
-// Update group (owner only)
+// Update group - only basic fields (owner only)
 export const updateGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
-    const { name, description, maxMembers, allowedTeamIds } = req.body;
+    const { name, description, maxMembers } = req.body;
 
     const group = await prisma.group.findUnique({
       where: { id: parseInt(id) }
@@ -549,8 +593,7 @@ export const updateGroup = async (req: Request, res: Response) => {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(maxMembers && { maxMembers }),
-        ...(allowedTeamIds && { allowedTeamIds })
+        ...(maxMembers && { maxMembers })
       },
       include: {
         league: true,
@@ -566,6 +609,57 @@ export const updateGroup = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: updatedGroup
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Regenerate join code (owner only)
+export const regenerateJoinCode = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+
+    const group = await prisma.group.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found'
+      });
+    }
+
+    if (group.ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the group owner can regenerate the join code'
+      });
+    }
+
+    if (group.isPublic) {
+      return res.status(400).json({
+        success: false,
+        message: 'Public groups do not have join codes'
+      });
+    }
+
+    // Generate new code
+    const newJoinCode = `${group.name.substring(0, 6).toUpperCase()}${Date.now().toString().slice(-4)}`;
+
+    const updatedGroup = await prisma.group.update({
+      where: { id: parseInt(id) },
+      data: { joinCode: newJoinCode }
+    });
+
+    res.json({
+      success: true,
+      data: { joinCode: updatedGroup.joinCode }
     });
   } catch (error: any) {
     res.status(500).json({

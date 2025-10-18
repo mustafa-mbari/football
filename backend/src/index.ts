@@ -19,6 +19,7 @@ import syncRoutes from './routes/syncRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import pointsRuleRoutes from './routes/pointsRuleRoutes';
 import groupRoutes from './routes/groupRoutes';
+import changeRequestRoutes from './routes/changeRequestRoutes';
 
 dotenv.config();
 
@@ -26,8 +27,24 @@ const app: Application = express();
 const PORT = process.env.PORT || 7070;
 
 // Middleware
+// Allow both localhost and local network access for development
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://192.168.178.24:8080',
+  'http://127.0.0.1:8080'
+];
+
 app.use(cors({
-  origin: 'http://localhost:8080',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -48,6 +65,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/points-rules', pointsRuleRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/change-requests', changeRequestRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
