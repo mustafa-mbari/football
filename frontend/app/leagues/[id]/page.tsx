@@ -467,37 +467,75 @@ function LeagueContent() {
               return (
                 <Card key={match.id} className={isLocked && !isFinished ? 'border-orange-300 dark:border-orange-700' : ''}>
                   <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-6">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                      <CardDescription className="text-xs sm:text-sm">
-                        {new Date(match.matchDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}{' '}
-                        {new Date(match.matchDate).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </CardDescription>
-                      <div className="flex gap-2 flex-wrap">
-                        {isFinished && <Badge variant="secondary" className="text-xs">Finished</Badge>}
-                        {isLocked && !isFinished && (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">
-                            Locked
-                          </Badge>
-                        )}
-                        {canPredict && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
-                            Open
-                          </Badge>
-                        )}
+                    {/* Mobile compact view */}
+                    <div className="sm:hidden">
+                      <div className="flex justify-between items-start gap-2 mb-1">
+                        <CardDescription className="text-[10px] leading-tight flex-1">
+                          {new Date(match.matchDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          })}{' '}
+                          {new Date(match.matchDate).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                          {!isFinished && (
+                            <>
+                              {' • Close: '}
+                              {getDeadlineTime(match.matchDate)}
+                            </>
+                          )}
+                        </CardDescription>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {isFinished && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Done</Badge>}
+                          {isLocked && !isFinished && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-[10px] h-4 px-1.5">
+                              Locked
+                            </Badge>
+                          )}
+                          {canPredict && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-[10px] h-4 px-1.5">
+                              Open
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {!isFinished && (
-                      <CardDescription className="text-xs mt-1">
-                        Predictions close: {getDeadlineTime(match.matchDate)}
-                      </CardDescription>
-                    )}
+
+                    {/* Desktop view */}
+                    <div className="hidden sm:block">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                        <CardDescription className="text-xs sm:text-sm">
+                          {new Date(match.matchDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}{' '}
+                          {new Date(match.matchDate).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </CardDescription>
+                        <div className="flex gap-2 flex-wrap">
+                          {isFinished && <Badge variant="secondary" className="text-xs">Finished</Badge>}
+                          {isLocked && !isFinished && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">
+                              Locked
+                            </Badge>
+                          )}
+                          {canPredict && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+                              Open
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {!isFinished && (
+                        <CardDescription className="text-xs mt-1">
+                          Predictions close: {getDeadlineTime(match.matchDate)}
+                        </CardDescription>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="pt-2 sm:pt-4 pb-3 sm:pb-6">
                     <div className="space-y-2 sm:space-y-3">
