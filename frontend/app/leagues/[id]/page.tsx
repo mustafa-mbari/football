@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -475,7 +475,7 @@ function LeagueContent() {
                         : 'hover:border-blue-300 dark:hover:border-blue-600'
                   }`}
                 >
-                  <CardHeader className="pb-2 sm:pb-4 pt-3 sm:pt-4">
+                  <CardHeader className="pb-2 sm:pb-2 pt-3 sm:pt-3">
                     {/* Mobile compact view */}
                     <div className="sm:hidden">
                       <div className="flex justify-between items-start gap-2 mb-1">
@@ -567,7 +567,7 @@ function LeagueContent() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-2 sm:pt-4 pb-3 sm:pb-6">
+                  <CardContent className="pt-2 sm:pt-2 pb-3 sm:pb-3">
                     <div className="space-y-2 sm:space-y-3">
                       {/* Mobile Match Display - 3 columns */}
                       <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-start sm:hidden">
@@ -675,55 +675,55 @@ function LeagueContent() {
 
                       {/* Desktop Match Display - Professional Redesign */}
                       <div className="hidden sm:block">
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
                           {/* Home Team Section */}
-                          <div className="flex-1 flex items-center justify-end gap-4 min-w-0">
+                          <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
                             <div className="text-right min-w-0">
-                              <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">
+                              <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">
                                 {match.homeTeam.name}
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                 {match.homeTeam.shortName || 'Home'}
                               </p>
                             </div>
-                            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                               {getTeamLogo(match.homeTeam)}
                             </div>
                           </div>
 
                           {/* Center Score/Prediction Section */}
-                          <div className="flex flex-col items-center gap-4 px-8 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-slate-200 dark:border-slate-700 min-w-[280px]">
+                          <div className="flex flex-col items-center gap-3 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-slate-200 dark:border-slate-700 min-w-[240px]">
                             {/* Match Score - Only show for finished or in-progress matches */}
                             {!canPredict && (
                               <div className="flex flex-col items-center gap-2">
                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                   {isFinished ? 'Final Score' : 'Match Score'}
                                 </span>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   {isFinished ? (
                                     <>
-                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                        <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                        <span className="text-xl font-bold text-green-700 dark:text-green-400">
                                           {match.homeScore ?? 0}
                                         </span>
                                       </div>
-                                      <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
-                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                        <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                      <div className="w-6 h-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
+                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                        <span className="text-xl font-bold text-green-700 dark:text-green-400">
                                           {match.awayScore ?? 0}
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <>
-                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                        <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                        <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
                                           {match.homeScore ?? 0}
                                         </span>
                                       </div>
-                                      <div className="w-8 h-1 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
-                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                        <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                      <div className="w-6 h-0.5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
+                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                        <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
                                           {match.awayScore ?? 0}
                                         </span>
                                       </div>
@@ -735,7 +735,7 @@ function LeagueContent() {
 
                             {/* Prediction Section */}
                             {canPredict ? (
-                              <div className="flex flex-col items-center gap-2 w-full">
+                              <div className="flex flex-col items-center gap-1.5 w-full">
                                 <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                                   {isEditing ? 'Update Prediction' : userPrediction ? 'Your Prediction' : 'Make Prediction'}
                                 </span>
@@ -745,16 +745,16 @@ function LeagueContent() {
                                       <Input
                                         type="number"
                                         min="0"
-                                        className="w-16 h-12 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                        className="w-14 h-11 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
                                         placeholder="0"
                                         value={predictions[match.id]?.home || ''}
                                         onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
                                       />
-                                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">:</span>
+                                      <span className="text-xl font-bold text-orange-600 dark:text-orange-400">:</span>
                                       <Input
                                         type="number"
                                         min="0"
-                                        className="w-16 h-12 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                        className="w-14 h-11 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
                                         placeholder="0"
                                         value={predictions[match.id]?.away || ''}
                                         onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
@@ -762,13 +762,13 @@ function LeagueContent() {
                                     </>
                                   ) : userPrediction ? (
                                     <>
-                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
+                                      <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
                                         <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
                                           {userPrediction.predictedHomeScore}
                                         </span>
                                       </div>
-                                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">:</span>
-                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
+                                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400">:</span>
+                                      <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
                                         <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
                                           {userPrediction.predictedAwayScore}
                                         </span>
@@ -776,30 +776,30 @@ function LeagueContent() {
                                     </>
                                   ) : (
                                     <>
-                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
-                                        <span className="text-xl text-blue-400 dark:text-blue-500">?</span>
+                                      <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
+                                        <span className="text-lg text-blue-400 dark:text-blue-500">?</span>
                                       </div>
-                                      <span className="text-2xl font-bold text-blue-400 dark:text-blue-500">:</span>
-                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
-                                        <span className="text-xl text-blue-400 dark:text-blue-500">?</span>
+                                      <span className="text-xl font-bold text-blue-400 dark:text-blue-500">:</span>
+                                      <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
+                                        <span className="text-lg text-blue-400 dark:text-blue-500">?</span>
                                       </div>
                                     </>
                                   )}
                                 </div>
                               </div>
                             ) : !isFinished && userPrediction ? (
-                              <div className="flex flex-col items-center gap-2 w-full">
+                              <div className="flex flex-col items-center gap-1.5 w-full">
                                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                   Your Prediction (Locked)
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
+                                  <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
                                     <span className="text-lg font-bold text-slate-600 dark:text-slate-300">
                                       {userPrediction.predictedHomeScore}
                                     </span>
                                   </div>
-                                  <span className="text-2xl font-bold text-slate-500 dark:text-slate-400">:</span>
-                                  <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
+                                  <span className="text-xl font-bold text-slate-500 dark:text-slate-400">:</span>
+                                  <div className="w-14 h-11 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
                                     <span className="text-lg font-bold text-slate-600 dark:text-slate-300">
                                       {userPrediction.predictedAwayScore}
                                     </span>
@@ -810,12 +810,12 @@ function LeagueContent() {
                           </div>
 
                           {/* Away Team Section */}
-                          <div className="flex-1 flex items-center gap-4 min-w-0">
-                            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                          <div className="flex-1 flex items-center gap-3 min-w-0">
+                            <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                               {getTeamLogo(match.awayTeam)}
                             </div>
                             <div className="text-left min-w-0">
-                              <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">
+                              <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">
                                 {match.awayTeam.name}
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
@@ -835,8 +835,7 @@ function LeagueContent() {
                                     handleChangeClick(match.id, userPrediction);
                                   }
                                 }}
-                                size="lg"
-                                className={`min-w-[120px] font-semibold shadow-lg transition-all duration-200 ${
+                                className={`min-w-[100px] font-semibold shadow-md transition-all duration-200 h-9 ${
                                   isEditing
                                     ? 'bg-orange-600 hover:bg-orange-700 text-white'
                                     : userPrediction
