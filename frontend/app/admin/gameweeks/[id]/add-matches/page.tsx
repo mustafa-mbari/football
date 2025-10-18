@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TimePicker } from '@/components/ui/time-picker';
+import { TeamSelector } from '@/components/ui/team-selector';
 import { useAuth } from '@/contexts/AuthContext';
 import { matchesApi } from '@/lib/api';
 
@@ -15,6 +17,7 @@ interface Team {
   id: number;
   name: string;
   code: string;
+  logoUrl?: string;
   stadium?: string;
 }
 
@@ -102,7 +105,15 @@ export default function AddMatchesPage() {
   const setCurrentTime = () => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentMinutes = now.getMinutes();
+
+    // Round to nearest allowed minute (00, 10, 15, 20, 30, 45)
+    const allowedMinutes = [0, 10, 15, 20, 30, 45];
+    const roundedMinute = allowedMinutes.reduce((prev, curr) =>
+      Math.abs(curr - currentMinutes) < Math.abs(prev - currentMinutes) ? curr : prev
+    );
+    const minutes = String(roundedMinute).padStart(2, '0');
+
     setMatchTime(`${hours}:${minutes}`);
   };
 
@@ -244,38 +255,27 @@ export default function AddMatchesPage() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Home Team *
                   </label>
-                  <select
+                  <TeamSelector
+                    teams={teams}
                     value={homeTeamId}
-                    onChange={(e) => setHomeTeamId(e.target.value)}
+                    onChange={setHomeTeamId}
+                    placeholder="Select Home Team"
                     required
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Home Team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Away Team *
                   </label>
-                  <select
+                  <TeamSelector
+                    teams={teams}
                     value={awayTeamId}
-                    onChange={(e) => setAwayTeamId(e.target.value)}
+                    onChange={setAwayTeamId}
+                    placeholder="Select Away Team"
+                    disabledTeamId={homeTeamId ? parseInt(homeTeamId) : undefined}
                     required
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Away Team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id} disabled={team.id === parseInt(homeTeamId)}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
 
@@ -296,13 +296,12 @@ export default function AddMatchesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Match Time *
+                    Match Time * (24H Format)
                   </label>
                   <div className="flex gap-2">
-                    <Input
-                      type="time"
+                    <TimePicker
                       value={matchTime}
-                      onChange={(e) => setMatchTime(e.target.value)}
+                      onChange={setMatchTime}
                       required
                       className="flex-1"
                     />
