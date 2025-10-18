@@ -502,16 +502,15 @@ function LeagueContent() {
                   <CardContent>
                     <div className="space-y-4">
                       {/* Match Display */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center justify-between gap-2 sm:gap-4">
                         {/* Home Team */}
-                        <div className="flex-1 flex items-center sm:justify-end gap-2 sm:gap-3">
-                          <div className="sm:hidden">{getTeamLogo(match.homeTeam)}</div>
-                          <p className="font-semibold text-sm sm:text-base sm:text-right flex-1 sm:flex-none">{match.homeTeam.name}</p>
-                          <div className="hidden sm:block">{getTeamLogo(match.homeTeam)}</div>
+                        <div className="flex-1 flex items-center justify-end gap-2 sm:gap-3">
+                          <p className="font-semibold text-sm sm:text-base text-right truncate">{match.homeTeam.name}</p>
+                          {getTeamLogo(match.homeTeam)}
                         </div>
 
                         {/* Score/Input Section */}
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-2 flex-shrink-0">
                           {/* Real Result - show for all matches */}
                           {isFinished ? (
                             <div className="text-lg font-bold text-green-700 dark:text-green-500">
@@ -611,12 +610,11 @@ function LeagueContent() {
 
                         {/* Away Team */}
                         <div className="flex-1 flex items-center gap-2 sm:gap-3">
-                          <div className="sm:hidden">{getTeamLogo(match.awayTeam)}</div>
-                          <p className="font-semibold text-sm sm:text-base flex-1 sm:flex-none">{match.awayTeam.name}</p>
-                          <div className="hidden sm:block">{getTeamLogo(match.awayTeam)}</div>
+                          {getTeamLogo(match.awayTeam)}
+                          <p className="font-semibold text-sm sm:text-base truncate">{match.awayTeam.name}</p>
                         </div>
 
-                        {/* Predict Button */}
+                        {/* Desktop Predict Button */}
                         {canPredict && (
                           <Button
                             onClick={() => {
@@ -626,7 +624,7 @@ function LeagueContent() {
                                 handleChangeClick(match.id, userPrediction);
                               }
                             }}
-                            className="hidden sm:block ml-4"
+                            className="hidden sm:inline-flex ml-4"
                           >
                             {isEditing ? 'Update' : userPrediction ? 'Change' : 'Predict'}
                           </Button>
