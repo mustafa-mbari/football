@@ -288,7 +288,7 @@ function LeagueContent() {
         <img
           src={team.logoUrl}
           alt={team.name}
-          className="w-8 h-8 object-contain"
+          className="w-12 h-12 sm:w-14 sm:h-14 object-contain transition-transform duration-200 hover:scale-110"
         />
       );
     }
@@ -465,8 +465,17 @@ function LeagueContent() {
               const isEditing = editingMatchId === match.id;
 
               return (
-                <Card key={match.id} className={isLocked && !isFinished ? 'border-orange-300 dark:border-orange-700' : ''}>
-                  <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-6">
+                <Card
+                  key={match.id}
+                  className={`transition-all duration-300 hover:shadow-xl ${
+                    isLocked && !isFinished
+                      ? 'border-orange-300 dark:border-orange-700 hover:border-orange-400 dark:hover:border-orange-600'
+                      : isFinished
+                        ? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700'
+                        : 'hover:border-blue-300 dark:hover:border-blue-600'
+                  }`}
+                >
+                  <CardHeader className="pb-2 sm:pb-4 pt-3 sm:pt-4">
                     {/* Mobile compact view */}
                     <div className="sm:hidden">
                       <div className="flex justify-between items-start gap-2 mb-1">
@@ -502,39 +511,60 @@ function LeagueContent() {
                       </div>
                     </div>
 
-                    {/* Desktop view */}
-                    <div className="hidden sm:block">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                        <CardDescription className="text-xs sm:text-sm">
-                          {new Date(match.matchDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}{' '}
-                          {new Date(match.matchDate).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </CardDescription>
-                        <div className="flex gap-2 flex-wrap">
-                          {isFinished && <Badge variant="secondary" className="text-xs">Finished</Badge>}
-                          {isLocked && !isFinished && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs">
-                              Locked
-                            </Badge>
-                          )}
-                          {canPredict && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
-                              Open
-                            </Badge>
-                          )}
+                    {/* Desktop view - Compact single line */}
+                    <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-4">
+                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-medium">
+                            {new Date(match.matchDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="font-medium">
+                            {new Date(match.matchDate).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        {!isFinished && (
+                          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span className="font-medium">
+                              Close: {getDeadlineTime(match.matchDate)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      {!isFinished && (
-                        <CardDescription className="text-xs mt-1">
-                          Predictions close: {getDeadlineTime(match.matchDate)}
-                        </CardDescription>
-                      )}
+                      <div className="flex gap-2 flex-shrink-0">
+                        {isFinished && (
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-600 text-xs font-semibold">
+                            Finished
+                          </Badge>
+                        )}
+                        {isLocked && !isFinished && (
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-600 text-xs font-semibold">
+                            Locked
+                          </Badge>
+                        )}
+                        {canPredict && (
+                          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-300 dark:border-emerald-600 text-xs font-semibold">
+                            Open for Predictions
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-2 sm:pt-4 pb-3 sm:pb-6">
@@ -643,134 +673,190 @@ function LeagueContent() {
                         </div>
                       </div>
 
-                      {/* Desktop Match Display - Original unchanged layout */}
-                      <div className="hidden sm:flex items-center justify-between gap-4">
-                        {/* Home Team */}
-                        <div className="flex-1 flex items-center justify-end gap-3">
-                          <p className="font-semibold text-base text-right truncate">{match.homeTeam.name}</p>
-                          {getTeamLogo(match.homeTeam)}
-                        </div>
+                      {/* Desktop Match Display - Professional Redesign */}
+                      <div className="hidden sm:block">
+                        <div className="flex items-center gap-6">
+                          {/* Home Team Section */}
+                          <div className="flex-1 flex items-center justify-end gap-4 min-w-0">
+                            <div className="text-right min-w-0">
+                              <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">
+                                {match.homeTeam.name}
+                              </h3>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {match.homeTeam.shortName || 'Home'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                              {getTeamLogo(match.homeTeam)}
+                            </div>
+                          </div>
 
-                        {/* Score/Input Section */}
-                        <div className="flex flex-col items-center gap-2">
-                          {/* Real Result */}
-                          {isFinished ? (
-                            <div className="text-lg font-bold text-green-700 dark:text-green-500">
-                              {match.homeScore ?? 0} - {match.awayScore ?? 0}
-                            </div>
-                          ) : match.homeScore !== null && match.homeScore !== undefined ? (
-                            <div className="text-lg font-bold text-green-700 dark:text-green-500">
-                              {match.homeScore} - {match.awayScore ?? 0}
-                            </div>
-                          ) : (
-                            <div className="text-lg font-bold text-blue-700 dark:text-blue-400">
-                              ? - ?
-                            </div>
-                          )}
-
-                          {/* Your Prediction Section */}
-                          {canPredict ? (
-                            <div className="flex flex-col items-center gap-1">
-                              {isEditing ? (
-                                <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
-                                  Your Prediction:
-                                </span>
-                              ) : (
-                                <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
-                                  Your Prediction:
-                                </span>
-                              )}
-                              <div className="flex items-center gap-2">
-                                {isEditing ? (
+                          {/* Center Score/Prediction Section */}
+                          <div className="flex flex-col items-center gap-4 px-8 py-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-slate-200 dark:border-slate-700 min-w-[280px]">
+                            {/* Match Score */}
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {isFinished ? 'Final Score' : 'Match Score'}
+                              </span>
+                              <div className="flex items-center gap-3">
+                                {isFinished ? (
                                   <>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      className="w-16 text-center text-orange-600 dark:text-orange-400 font-semibold"
-                                      placeholder="0"
-                                      value={predictions[match.id]?.home || ''}
-                                      onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
-                                    />
-                                    <span className="text-xl font-bold text-orange-600 dark:text-orange-400">-</span>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      className="w-16 text-center text-orange-600 dark:text-orange-400 font-semibold"
-                                      placeholder="0"
-                                      value={predictions[match.id]?.away || ''}
-                                      onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
-                                    />
-                                  </>
-                                ) : userPrediction ? (
-                                  <>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
-                                        {userPrediction.predictedHomeScore}
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                      <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                        {match.homeScore ?? 0}
                                       </span>
                                     </div>
-                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 font-semibold">
-                                        {userPrediction.predictedAwayScore}
+                                    <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
+                                      <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                        {match.awayScore ?? 0}
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : match.homeScore !== null && match.homeScore !== undefined ? (
+                                  <>
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                      <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                        {match.homeScore}
+                                      </span>
+                                    </div>
+                                    <div className="w-8 h-1 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
+                                      <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                                        {match.awayScore ?? 0}
                                       </span>
                                     </div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600">
+                                      <span className="text-2xl font-bold text-slate-400 dark:text-slate-500">?</span>
                                     </div>
-                                    <span className="text-xl font-bold text-blue-700 dark:text-blue-400">-</span>
-                                    <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-white dark:bg-slate-800">
-                                      <span className="text-blue-700 dark:text-blue-400 text-2xl">?</span>
+                                    <div className="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+                                    <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600">
+                                      <span className="text-2xl font-bold text-slate-400 dark:text-slate-500">?</span>
                                     </div>
                                   </>
                                 )}
                               </div>
                             </div>
-                          ) : !isFinished && userPrediction ? (
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                Your Prediction:
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-slate-100 dark:bg-slate-700">
-                                  <span className="text-slate-700 dark:text-slate-300 font-semibold">
-                                    {userPrediction.predictedHomeScore}
-                                  </span>
-                                </div>
-                                <span className="text-xl font-bold text-slate-600 dark:text-slate-400">-</span>
-                                <div className="w-16 h-10 flex items-center justify-center border rounded-md bg-slate-100 dark:bg-slate-700">
-                                  <span className="text-slate-700 dark:text-slate-300 font-semibold">
-                                    {userPrediction.predictedAwayScore}
-                                  </span>
+
+                            {/* Prediction Section */}
+                            {canPredict ? (
+                              <div className="flex flex-col items-center gap-2 w-full">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                                  {isEditing ? 'Update Prediction' : userPrediction ? 'Your Prediction' : 'Make Prediction'}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {isEditing ? (
+                                    <>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        className="w-16 h-12 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                        placeholder="0"
+                                        value={predictions[match.id]?.home || ''}
+                                        onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
+                                      />
+                                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">:</span>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        className="w-16 h-12 text-center text-lg font-bold text-orange-600 dark:text-orange-400 border-2 border-orange-400 dark:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                                        placeholder="0"
+                                        value={predictions[match.id]?.away || ''}
+                                        onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
+                                      />
+                                    </>
+                                  ) : userPrediction ? (
+                                    <>
+                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
+                                        <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                                          {userPrediction.predictedHomeScore}
+                                        </span>
+                                      </div>
+                                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">:</span>
+                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400 dark:border-blue-600">
+                                        <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                                          {userPrediction.predictedAwayScore}
+                                        </span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
+                                        <span className="text-xl text-blue-400 dark:text-blue-500">?</span>
+                                      </div>
+                                      <span className="text-2xl font-bold text-blue-400 dark:text-blue-500">:</span>
+                                      <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-700">
+                                        <span className="text-xl text-blue-400 dark:text-blue-500">?</span>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
+                            ) : !isFinished && userPrediction ? (
+                              <div className="flex flex-col items-center gap-2 w-full">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                  Your Prediction (Locked)
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
+                                    <span className="text-lg font-bold text-slate-600 dark:text-slate-300">
+                                      {userPrediction.predictedHomeScore}
+                                    </span>
+                                  </div>
+                                  <span className="text-2xl font-bold text-slate-500 dark:text-slate-400">:</span>
+                                  <div className="w-16 h-12 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 opacity-75">
+                                    <span className="text-lg font-bold text-slate-600 dark:text-slate-300">
+                                      {userPrediction.predictedAwayScore}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {/* Away Team Section */}
+                          <div className="flex-1 flex items-center gap-4 min-w-0">
+                            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                              {getTeamLogo(match.awayTeam)}
                             </div>
-                          ) : null}
-                        </div>
+                            <div className="text-left min-w-0">
+                              <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">
+                                {match.awayTeam.name}
+                              </h3>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {match.awayTeam.shortName || 'Away'}
+                              </p>
+                            </div>
+                          </div>
 
-                        {/* Away Team */}
-                        <div className="flex-1 flex items-center gap-3">
-                          {getTeamLogo(match.awayTeam)}
-                          <p className="font-semibold text-base truncate">{match.awayTeam.name}</p>
+                          {/* Action Button */}
+                          {canPredict && (
+                            <div className="flex-shrink-0">
+                              <Button
+                                onClick={() => {
+                                  if (isEditing) {
+                                    handleSubmitPrediction(match.id);
+                                  } else {
+                                    handleChangeClick(match.id, userPrediction);
+                                  }
+                                }}
+                                size="lg"
+                                className={`min-w-[120px] font-semibold shadow-lg transition-all duration-200 ${
+                                  isEditing
+                                    ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                    : userPrediction
+                                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                      : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
+                                }`}
+                              >
+                                {isEditing ? 'Save' : userPrediction ? 'Edit' : 'Predict'}
+                              </Button>
+                            </div>
+                          )}
                         </div>
-
-                        {/* Desktop Predict Button */}
-                        {canPredict && (
-                          <Button
-                            onClick={() => {
-                              if (isEditing) {
-                                handleSubmitPrediction(match.id);
-                              } else {
-                                handleChangeClick(match.id, userPrediction);
-                              }
-                            }}
-                            className="hidden sm:inline-flex ml-4"
-                          >
-                            {isEditing ? 'Update' : userPrediction ? 'Change' : 'Predict'}
-                          </Button>
-                        )}
                       </div>
 
                       {/* Mobile-only Predict Button */}
@@ -791,36 +877,57 @@ function LeagueContent() {
 
                       {/* User Prediction Display - Only show when finished */}
                       {userPrediction && isFinished && (
-                        <div className="border-t pt-2 sm:pt-3 space-y-1 sm:space-y-2">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">
-                              Your Prediction:
-                            </span>
-                            <div className="flex items-center gap-4">
-                              <span className="font-semibold text-lg text-green-700 dark:text-green-500">
-                                {userPrediction.predictedHomeScore} - {userPrediction.predictedAwayScore}
-                              </span>
-                              {userPrediction.totalPoints !== null && (
+                        <div className="hidden sm:block border-t-2 border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                          <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 rounded-lg p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-12 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                                  Your Prediction
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                                    {userPrediction.predictedHomeScore}
+                                  </span>
+                                  <span className="text-xl font-bold text-slate-400">:</span>
+                                  <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                                    {userPrediction.predictedAwayScore}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {userPrediction.totalPoints !== null && (
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                                    Points Earned
+                                  </p>
+                                  <p className={`text-3xl font-bold ${
+                                    userPrediction.totalPoints >= 8
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : userPrediction.totalPoints >= 3
+                                        ? 'text-blue-600 dark:text-blue-400'
+                                        : 'text-red-600 dark:text-red-400'
+                                  }`}>
+                                    {userPrediction.totalPoints}
+                                  </p>
+                                </div>
                                 <Badge
-                                  variant={
-                                    userPrediction.totalPoints >= 8 ? 'default' :
-                                    userPrediction.totalPoints >= 3 ? 'secondary' :
-                                    'destructive'
-                                  }
+                                  className={`px-4 py-2 text-sm font-semibold ${
+                                    userPrediction.totalPoints >= 8
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-600'
+                                      : userPrediction.totalPoints >= 3
+                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-600'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-600'
+                                  }`}
                                 >
-                                  {userPrediction.totalPoints} points
+                                  {userPrediction.totalPoints >= 8 && 'Perfect!'}
+                                  {userPrediction.totalPoints >= 3 && userPrediction.totalPoints < 8 && 'Good'}
+                                  {userPrediction.totalPoints === 0 && 'Missed'}
                                 </Badge>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
-
-                          {userPrediction.totalPoints !== null && (
-                            <div className="text-xs text-slate-600 dark:text-slate-400">
-                              {userPrediction.totalPoints >= 8 && '🎯 Exact score! Perfect prediction!'}
-                              {userPrediction.totalPoints >= 3 && userPrediction.totalPoints < 8 && '✓ Correct outcome! Good prediction!'}
-                              {userPrediction.totalPoints === 0 && '✗ Incorrect prediction'}
-                            </div>
-                          )}
                         </div>
                       )}
 
