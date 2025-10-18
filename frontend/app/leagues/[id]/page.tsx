@@ -504,9 +504,9 @@ function LeagueContent() {
                       {/* Match Display */}
                       <div className="flex items-center justify-between gap-2 sm:gap-4">
                         {/* Home Team */}
-                        <div className="flex-1 flex items-center justify-end gap-2 sm:gap-3">
-                          <p className="font-semibold text-sm sm:text-base text-right truncate">{match.homeTeam.name}</p>
-                          {getTeamLogo(match.homeTeam)}
+                        <div className="flex-1 flex sm:flex-row flex-col sm:items-center items-end justify-end gap-1 sm:gap-3">
+                          <p className="font-semibold text-xs sm:text-base text-right truncate sm:order-1 order-2">{match.homeTeam.name}</p>
+                          <div className="order-1 sm:order-2">{getTeamLogo(match.homeTeam)}</div>
                         </div>
 
                         {/* Score/Input Section */}
@@ -609,9 +609,9 @@ function LeagueContent() {
                         </div>
 
                         {/* Away Team */}
-                        <div className="flex-1 flex items-center gap-2 sm:gap-3">
+                        <div className="flex-1 flex sm:flex-row flex-col sm:items-center items-start gap-1 sm:gap-3">
                           {getTeamLogo(match.awayTeam)}
-                          <p className="font-semibold text-sm sm:text-base truncate">{match.awayTeam.name}</p>
+                          <p className="font-semibold text-xs sm:text-base text-left truncate">{match.awayTeam.name}</p>
                         </div>
 
                         {/* Desktop Predict Button */}
