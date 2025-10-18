@@ -579,10 +579,13 @@ function LeagueContent() {
 
                         {/* Score/Prediction - Column 2 (Center) */}
                         <div className="flex flex-col items-center gap-0.5 px-1">
-                          {/* Real Score */}
+                          {/* Final Score - Always show at top */}
                           {isFinished ? (
-                            <div className="text-sm font-bold text-green-700 dark:text-green-500">
-                              {match.homeScore ?? 0}-{match.awayScore ?? 0}
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[7px] font-medium text-green-700 dark:text-green-500 uppercase">Final</span>
+                              <div className="text-sm font-bold text-green-700 dark:text-green-500">
+                                {match.homeScore ?? 0}-{match.awayScore ?? 0}
+                              </div>
                             </div>
                           ) : match.homeScore !== null && match.homeScore !== undefined ? (
                             <div className="text-sm font-bold text-green-700 dark:text-green-500">
@@ -594,8 +597,38 @@ function LeagueContent() {
                             </div>
                           )}
 
-                          {/* Prediction */}
-                          {canPredict ? (
+                          {/* Prediction Section */}
+                          {isFinished && userPrediction ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[7px] font-medium text-slate-600 dark:text-slate-400 uppercase">Predict</span>
+                              <div className="flex items-center gap-0.5">
+                                <div className="w-8 h-6 flex items-center justify-center border rounded bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                                    {userPrediction.predictedHomeScore}
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">-</span>
+                                <div className="w-8 h-6 flex items-center justify-center border rounded bg-slate-100 dark:bg-slate-700">
+                                  <span className="text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                                    {userPrediction.predictedAwayScore}
+                                  </span>
+                                </div>
+                              </div>
+                              {userPrediction.totalPoints !== null && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className={`text-xs font-bold ${
+                                    userPrediction.totalPoints >= 8
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : userPrediction.totalPoints >= 3
+                                        ? 'text-blue-600 dark:text-blue-400'
+                                        : 'text-red-600 dark:text-red-400'
+                                  }`}>
+                                    {userPrediction.totalPoints} pts
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : canPredict ? (
                             <div className="flex flex-col items-center gap-0.5">
                               <span className="text-[7px] font-medium text-blue-700 dark:text-blue-400 uppercase">Predict</span>
                               <div className="flex items-center gap-0.5">
@@ -692,38 +725,38 @@ function LeagueContent() {
                           </div>
 
                           {/* Center Score/Prediction Section */}
-                          <div className="flex flex-col items-center gap-3 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-slate-200 dark:border-slate-700 min-w-[240px]">
+                          <div className={`flex flex-col items-center ${isFinished ? 'gap-3 py-3' : 'gap-3 py-3'} px-6 bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm min-w-[280px]`}>
                             {/* Match Score - Only show for finished or in-progress matches */}
                             {!canPredict && (
-                              <div className="flex flex-col items-center gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              <div className="flex flex-col items-center gap-2 w-full">
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                                   {isFinished ? 'Final Score' : 'Match Score'}
                                 </span>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                   {isFinished ? (
                                     <>
-                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                        <span className="text-xl font-bold text-green-700 dark:text-green-400">
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-2 border-green-500 dark:border-green-600 shadow-sm">
+                                        <span className="text-2xl font-black text-green-700 dark:text-green-400">
                                           {match.homeScore ?? 0}
                                         </span>
                                       </div>
-                                      <div className="w-6 h-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-full"></div>
-                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 border-2 border-green-500 dark:border-green-600">
-                                        <span className="text-xl font-bold text-green-700 dark:text-green-400">
+                                      <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">—</span>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-2 border-green-500 dark:border-green-600 shadow-sm">
+                                        <span className="text-2xl font-black text-green-700 dark:text-green-400">
                                           {match.awayScore ?? 0}
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <>
-                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                        <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 border-2 border-amber-500 dark:border-amber-600 shadow-sm">
+                                        <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
                                           {match.homeScore ?? 0}
                                         </span>
                                       </div>
-                                      <div className="w-6 h-0.5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"></div>
-                                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500 dark:border-amber-600">
-                                        <span className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                                      <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">—</span>
+                                      <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 border-2 border-amber-500 dark:border-amber-600 shadow-sm">
+                                        <span className="text-2xl font-black text-amber-700 dark:text-amber-400">
                                           {match.awayScore ?? 0}
                                         </span>
                                       </div>
@@ -733,7 +766,56 @@ function LeagueContent() {
                               </div>
                             )}
 
-                            {/* Prediction Section */}
+                            {/* Prediction Section for Finished Matches - Compact inline */}
+                            {isFinished && userPrediction ? (
+                              <div className="flex items-center justify-between w-full gap-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                <div className="flex items-center gap-2.5">
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Your Prediction
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl font-bold text-slate-600 dark:text-slate-300">
+                                      {userPrediction.predictedHomeScore}
+                                    </span>
+                                    <span className="text-base font-medium text-slate-400 dark:text-slate-500">:</span>
+                                    <span className="text-xl font-bold text-slate-600 dark:text-slate-300">
+                                      {userPrediction.predictedAwayScore}
+                                    </span>
+                                  </div>
+                                </div>
+                                {userPrediction.totalPoints !== null && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                      Points
+                                    </span>
+                                    <span className={`text-2xl font-black ${
+                                      userPrediction.totalPoints >= 8
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : userPrediction.totalPoints >= 3
+                                          ? 'text-blue-600 dark:text-blue-400'
+                                          : 'text-red-600 dark:text-red-400'
+                                    }`}>
+                                      {userPrediction.totalPoints}
+                                    </span>
+                                    <Badge
+                                      className={`px-2.5 py-1 text-xs font-bold ${
+                                        userPrediction.totalPoints >= 8
+                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-600'
+                                          : userPrediction.totalPoints >= 3
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-600'
+                                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-600'
+                                      }`}
+                                    >
+                                      {userPrediction.totalPoints >= 8 && 'Perfect!'}
+                                      {userPrediction.totalPoints >= 3 && userPrediction.totalPoints < 8 && 'Good'}
+                                      {userPrediction.totalPoints === 0 && 'Missed'}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+
+                            {/* Prediction Section for Open/Editable matches */}
                             {canPredict ? (
                               <div className="flex flex-col items-center gap-1.5 w-full">
                                 <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
@@ -864,62 +946,6 @@ function LeagueContent() {
                         >
                           {isEditing ? 'Update Prediction' : userPrediction ? 'Change Prediction' : 'Make Prediction'}
                         </Button>
-                      )}
-
-                      {/* User Prediction Display - Only show when finished */}
-                      {userPrediction && isFinished && (
-                        <div className="hidden sm:block border-t-2 border-slate-200 dark:border-slate-700 pt-4 mt-4">
-                          <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 rounded-lg p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-12 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                                  Your Prediction
-                                </p>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                                    {userPrediction.predictedHomeScore}
-                                  </span>
-                                  <span className="text-xl font-bold text-slate-400">:</span>
-                                  <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                                    {userPrediction.predictedAwayScore}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            {userPrediction.totalPoints !== null && (
-                              <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                                    Points Earned
-                                  </p>
-                                  <p className={`text-3xl font-bold ${
-                                    userPrediction.totalPoints >= 8
-                                      ? 'text-green-600 dark:text-green-400'
-                                      : userPrediction.totalPoints >= 3
-                                        ? 'text-blue-600 dark:text-blue-400'
-                                        : 'text-red-600 dark:text-red-400'
-                                  }`}>
-                                    {userPrediction.totalPoints}
-                                  </p>
-                                </div>
-                                <Badge
-                                  className={`px-4 py-2 text-sm font-semibold ${
-                                    userPrediction.totalPoints >= 8
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-600'
-                                      : userPrediction.totalPoints >= 3
-                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-600'
-                                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-600'
-                                  }`}
-                                >
-                                  {userPrediction.totalPoints >= 8 && 'Perfect!'}
-                                  {userPrediction.totalPoints >= 3 && userPrediction.totalPoints < 8 && 'Good'}
-                                  {userPrediction.totalPoints === 0 && 'Missed'}
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       )}
 
                       {/* Show message if no prediction and locked */}
