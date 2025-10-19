@@ -314,3 +314,125 @@ export const bulkImportMatchesByID = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const bulkDeleteScheduledMatches = async (req: Request, res: Response) => {
+  try {
+    console.log('=== Bulk Delete Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+    const { leagueId, weekNumbers } = req.body as {
+      leagueId: number;
+      weekNumbers: number[];
+    };
+
+    if (!leagueId || !weekNumbers || !Array.isArray(weekNumbers) || weekNumbers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request body. Expected: { leagueId: number, weekNumbers: number[] }',
+      });
+    }
+
+    // Find all gameweeks for the specified league and week numbers
+    const gameWeeks = await prisma.gameWeek.findMany({
+      where: {
+        leagueId: leagueId,
+        weekNumber: {
+          in: weekNumbers
+        }
+      },
+      select: { id: true, weekNumber: true }
+    });
+
+    if (gameWeeks.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        message: `No gameweeks found for weeks ${weekNumbers.join(', ')} in league ${leagueId}`,
+      });
+    }
+
+    const gameWeekIds = gameWeeks.map(gw => gw.id);
+
+    // Find all scheduled matches assigned to these gameweeks
+    const gameWeekMatches = await prisma.gameWeekMatch.findMany({
+      where: {
+        gameWeekId: { in: gameWeekIds }
+      },
+      include: {
+        match: {
+          include: {
+            homeTeam: { select: { name: true, code: true } },
+            awayTeam: { select: { name: true, code: true } }
+          }
+        }
+      }
+    });
+
+    // Filter only SCHEDULED matches
+    const scheduledMatches = gameWeekMatches.filter(gwm => gwm.match.status === 'SCHEDULED');
+
+    if (scheduledMatches.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        message: `No scheduled matches found for weeks ${weekNumbers.join(', ')} in league ${leagueId}`,
+      });
+    }
+
+    const matchIds = scheduledMatches.map(gwm => gwm.match.id);
+
+    // Delete related records first (predictions and gameweek assignments)
+    const deletedPredictions = await prisma.prediction.deleteMany({
+      where: { matchId: { in: matchIds } }
+    });
+
+    const deletedGameWeekMatches = await prisma.gameWeekMatch.deleteMany({
+      where: { matchId: { in: matchIds } }
+    });
+
+    // Delete the matches
+    const deleteResult = await prisma.match.deleteMany({
+      where: {
+        id: { in: matchIds }
+      }
+    });
+
+    console.log(`=== Delete Complete ===`);
+    console.log(`Deleted: ${deleteResult.count} scheduled matches`);
+    console.log(`Deleted: ${deletedPredictions.count} predictions`);
+    console.log(`Deleted: ${deletedGameWeekMatches.count} gameweek assignments`);
+    console.log(`Weeks: ${weekNumbers.join(', ')}`);
+
+    // Group deleted matches by week number
+    const matchesByWeek = scheduledMatches.reduce((acc, gwm) => {
+      const weekNumber = gameWeeks.find(gw => gw.id === gwm.gameWeekId)?.weekNumber || 0;
+      if (!acc[weekNumber]) {
+        acc[weekNumber] = [];
+      }
+      acc[weekNumber].push({
+        id: gwm.match.id,
+        homeTeam: gwm.match.homeTeam.name,
+        awayTeam: gwm.match.awayTeam.name,
+        matchDate: gwm.match.matchDate,
+        homeTeamId: gwm.match.homeTeamId,
+        awayTeamId: gwm.match.awayTeamId
+      });
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    res.json({
+      success: true,
+      count: deleteResult.count,
+      deletedPredictions: deletedPredictions.count,
+      deletedGameWeekMatches: deletedGameWeekMatches.count,
+      matchesByWeek: matchesByWeek,
+      message: `Successfully deleted ${deleteResult.count} scheduled matches from weeks ${weekNumbers.join(', ')}`,
+    });
+  } catch (error: any) {
+    console.error('Bulk delete error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

@@ -97,6 +97,8 @@ export default function BulkMatchImportPage() {
   const [gameWeeks, setGameWeeks] = useState<any[]>([]);
   const [conversionStats, setConversionStats] = useState<{total: number, converted: number} | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [deleteData, setDeleteData] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchTeamsAndGameWeeks();
@@ -512,7 +514,112 @@ export default function BulkMatchImportPage() {
     };
   };
 
+  const parseDeleteData = () => {
+    const lines = deleteData.trim().split('\n').filter(line => line.trim());
+    const parsed = [];
+    const errors = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const parts = line.split(',').map(p => p.trim());
+
+      if (parts.length !== 2) {
+        errors.push(`Line ${i + 1}: Invalid format (expected: LeagueId,WeekNumbers)`);
+        continue;
+      }
+
+      const [leagueIdStr, weekNumbersStr] = parts;
+
+      // Validate league ID
+      const leagueId = parseInt(leagueIdStr);
+      if (isNaN(leagueId)) {
+        errors.push(`Line ${i + 1}: League ID must be a number`);
+        continue;
+      }
+
+      // Parse week numbers (can be single or range like "10-11-12")
+      const weekNumbers = weekNumbersStr.split('-').map(w => parseInt(w.trim())).filter(n => !isNaN(n));
+
+      if (weekNumbers.length === 0) {
+        errors.push(`Line ${i + 1}: No valid week numbers found`);
+        continue;
+      }
+
+      parsed.push({
+        leagueId,
+        weekNumbers,
+      });
+    }
+
+    return { parsed, errors };
+  };
+
+  const handleDelete = async () => {
+    const { parsed, errors } = parseDeleteData();
+
+    if (errors.length > 0) {
+      alert('Validation errors:\n' + errors.join('\n'));
+      return;
+    }
+
+    if (parsed.length === 0) {
+      alert('No valid delete commands');
+      return;
+    }
+
+    // Build confirmation message
+    const confirmMessage = parsed.map(item => {
+      const leagueName = item.leagueId === 1 ? 'Premier League' : item.leagueId === 2 ? 'La Liga' : item.leagueId === 3 ? 'Bundesliga' : `League ${item.leagueId}`;
+      return `${leagueName}: Weeks ${item.weekNumbers.join(', ')}`;
+    }).join('\n');
+
+    const confirmed = confirm(
+      `Delete all SCHEDULED matches from:\n\n${confirmMessage}\n\nThis action cannot be undone. Continue?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      const results = [];
+
+      for (const item of parsed) {
+        const response = await fetch('http://localhost:7070/api/matches/bulk-delete-scheduled', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            leagueId: item.leagueId,
+            weekNumbers: item.weekNumbers,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          results.push(data);
+        } else {
+          const data = await response.json();
+          alert(data.message || 'Failed to delete matches');
+          return;
+        }
+      }
+
+      const totalDeleted = results.reduce((sum, r) => sum + r.count, 0);
+      const detailedMessage = results.map(r => r.message).join('\n');
+
+      alert(`Success!\n\n${detailedMessage}\n\nTotal deleted: ${totalDeleted} matches`);
+      setDeleteData('');
+    } catch (error) {
+      alert('Failed to delete matches');
+      console.error(error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const { parsed } = parseMatches();
+  const { parsed: parsedDelete } = parseDeleteData();
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -726,6 +833,84 @@ export default function BulkMatchImportPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Delete Section */}
+          <Card className="border-2 border-red-200 dark:border-red-900">
+            <CardHeader className="bg-red-50 dark:bg-red-950/30">
+              <CardTitle className="text-red-900 dark:text-red-200">🗑️ Bulk Delete Scheduled Matches</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">
+                    ⚠️ Warning: This will permanently delete all SCHEDULED matches for the specified weeks!
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    Only matches with status SCHEDULED will be deleted. Matches with status FINISHED, LIVE, or POSTPONED will NOT be affected.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
+                    Format: <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">
+                      LeagueId,WeekNumbers
+                    </code>
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
+                    League IDs: <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">1 = Premier League, 2 = La Liga, 3 = Bundesliga</code>
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+                    Examples:
+                  </p>
+                  <div className="space-y-1 mb-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">1,10-11-12</code> - Delete weeks 10, 11, 12 from Premier League
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">1,22</code> - Delete week 22 from Premier League
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      <code className="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded">2,23-24-25-26-27</code> - Delete weeks 23-27 from La Liga
+                    </p>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="1,10-11-12&#10;2,23-24-25-26-27&#10;3,15"
+                  value={deleteData}
+                  onChange={(e) => setDeleteData(e.target.value)}
+                  rows={6}
+                  className="font-mono text-sm border-red-200 dark:border-red-800 focus:border-red-400 dark:focus:border-red-600"
+                />
+
+                {/* Delete Preview */}
+                {parsedDelete.length > 0 && (
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-red-900 dark:text-red-200 mb-2">
+                      Preview: Will delete SCHEDULED matches from:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {parsedDelete.map((item, index) => {
+                        const leagueName = item.leagueId === 1 ? 'Premier League' : item.leagueId === 2 ? 'La Liga' : item.leagueId === 3 ? 'Bundesliga' : `League ${item.leagueId}`;
+                        return (
+                          <li key={index} className="text-sm text-red-800 dark:text-red-300">
+                            {leagueName}: Weeks {item.weekNumbers.join(', ')}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleting || !deleteData.trim()}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  {deleting ? 'Deleting...' : `Delete Scheduled Matches from ${parsedDelete.length} Command${parsedDelete.length !== 1 ? 's' : ''}`}
+                </Button>
               </div>
             </CardContent>
           </Card>
