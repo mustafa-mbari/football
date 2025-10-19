@@ -121,6 +121,18 @@ function GameWeeksContent() {
   };
 
   const handleSyncMatches = async (leagueId?: number) => {
+    const league = leagues.find(l => l.id === leagueId);
+    const confirmed = confirm(
+      `Sync Matches to GameWeeks for ${league?.name || 'this league'}?\n\n` +
+      '⚠️ This will:\n' +
+      '1. Assign all matches to their correct gameweeks\n' +
+      '2. Reset ALL team standings to 0\n' +
+      '3. Recalculate standings using ALL finished matches from ALL gameweeks\n' +
+      '4. Update points, wins, draws, losses, goals, and form\n\n' +
+      'This ensures all table data is accurate across the entire season.'
+    );
+    if (!confirmed) return;
+
     setSyncing(true);
     try {
       const response = await fetch('http://localhost:7070/api/gameweeks/sync-matches', {
@@ -134,7 +146,7 @@ function GameWeeksContent() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ ${data.message}\n\nSynced: ${data.stats.synced}\nSkipped: ${data.stats.skipped}`);
+        alert(`✅ ${data.message}\n\nMatches Synced: ${data.stats.matchesSynced}\nMatches Skipped: ${data.stats.matchesSkipped}\nFinished Matches Processed: ${data.stats.finishedMatchesProcessed}`);
         // Refresh gameweeks to show updated match counts
         await fetchGameWeeks();
       } else {

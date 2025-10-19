@@ -372,7 +372,8 @@ export const syncMatch = async (req: Request, res: Response) => {
   }
 };
 
-// RE-SYNC entire gameweek - reset and recalculate all data from scratch
+// RE-SYNC entire gameweek - recalculate TeamGameWeekStats for THIS gameweek only
+// Does NOT touch the main Table - that stays cumulative across all weeks
 export const resyncGameWeek = async (req: Request, res: Response) => {
   try {
     const { gameWeekId } = req.params;
@@ -385,12 +386,7 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
             match: {
               include: {
                 homeTeam: true,
-                awayTeam: true,
-                predictions: {
-                  include: {
-                    user: true
-                  }
-                }
+                awayTeam: true
               }
             }
           }
@@ -403,7 +399,7 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'GameWeek not found' });
     }
 
-    // Get all finished matches with scores
+    // Get all finished matches with scores from THIS gameweek only
     const finishedMatches = gameWeek.matches
       .map(gwm => gwm.match)
       .filter(m => m.status === 'FINISHED' && m.homeScore !== null && m.awayScore !== null);
@@ -415,42 +411,13 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
       });
     }
 
-    // Step 1: Reset all TeamGameWeekStats for this gameweek
+    // Step 1: Reset ONLY TeamGameWeekStats for this specific gameweek
     await prisma.teamGameWeekStats.deleteMany({
       where: { gameWeekId: gameWeek.id }
     });
 
-    // Step 2: Reset the league table (Table) - only reset stats, don't delete
-    const teamsInMatches = new Set<number>();
-    finishedMatches.forEach(match => {
-      teamsInMatches.add(match.homeTeamId);
-      teamsInMatches.add(match.awayTeamId);
-    });
-
-    // For each team in the matches, reset their table stats
-    for (const teamId of teamsInMatches) {
-      await prisma.table.updateMany({
-        where: {
-          leagueId: gameWeek.leagueId,
-          teamId: teamId
-        },
-        data: {
-          played: 0,
-          won: 0,
-          drawn: 0,
-          lost: 0,
-          goalsFor: 0,
-          goalsAgainst: 0,
-          goalDifference: 0,
-          points: 0,
-          form: null
-        }
-      });
-    }
-
-    // Step 3: Reprocess all matches
+    // Step 2: Recalculate TeamGameWeekStats for THIS gameweek only (NOT the main Table)
     let processedMatches = 0;
-    let totalPredictionsProcessed = 0;
     const errors: string[] = [];
 
     for (const match of finishedMatches) {
@@ -459,65 +426,11 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
         const awayWin = match.awayScore! > match.homeScore!;
         const draw = match.homeScore === match.awayScore;
 
-        // Update main league table (Table)
-        await prisma.table.upsert({
-          where: { leagueId_teamId: { leagueId: match.leagueId, teamId: match.homeTeamId } },
-          update: {
-            played: { increment: 1 },
-            won: homeWin ? { increment: 1 } : undefined,
-            drawn: draw ? { increment: 1 } : undefined,
-            lost: awayWin ? { increment: 1 } : undefined,
-            goalsFor: { increment: match.homeScore! },
-            goalsAgainst: { increment: match.awayScore! },
-            goalDifference: { increment: match.homeScore! - match.awayScore! },
-            points: { increment: homeWin ? 3 : draw ? 1 : 0 }
-          },
-          create: {
-            leagueId: match.leagueId,
-            teamId: match.homeTeamId,
-            position: 0,
-            played: 1,
-            won: homeWin ? 1 : 0,
-            drawn: draw ? 1 : 0,
-            lost: awayWin ? 1 : 0,
-            goalsFor: match.homeScore!,
-            goalsAgainst: match.awayScore!,
-            goalDifference: match.homeScore! - match.awayScore!,
-            points: homeWin ? 3 : draw ? 1 : 0
-          }
-        });
-
-        await prisma.table.upsert({
-          where: { leagueId_teamId: { leagueId: match.leagueId, teamId: match.awayTeamId } },
-          update: {
-            played: { increment: 1 },
-            won: awayWin ? { increment: 1 } : undefined,
-            drawn: draw ? { increment: 1 } : undefined,
-            lost: homeWin ? { increment: 1 } : undefined,
-            goalsFor: { increment: match.awayScore! },
-            goalsAgainst: { increment: match.homeScore! },
-            goalDifference: { increment: match.awayScore! - match.homeScore! },
-            points: { increment: awayWin ? 3 : draw ? 1 : 0 }
-          },
-          create: {
-            leagueId: match.leagueId,
-            teamId: match.awayTeamId,
-            position: 0,
-            played: 1,
-            won: awayWin ? 1 : 0,
-            drawn: draw ? 1 : 0,
-            lost: homeWin ? 1 : 0,
-            goalsFor: match.awayScore!,
-            goalsAgainst: match.homeScore!,
-            goalDifference: match.awayScore! - match.homeScore!,
-            points: awayWin ? 3 : draw ? 1 : 0
-          }
-        });
-
-        // Update/Create TeamGameWeekStats
+        // Calculate result letters
         const homeResult = homeWin ? 'W' : draw ? 'D' : 'L';
         const awayResult = awayWin ? 'W' : draw ? 'D' : 'L';
 
+        // Update/Create home team gameweek stats
         const homeStats = await prisma.teamGameWeekStats.findUnique({
           where: {
             gameWeekId_teamId: {
@@ -565,6 +478,7 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
           });
         }
 
+        // Update/Create away team gameweek stats
         const awayStats = await prisma.teamGameWeekStats.findUnique({
           where: {
             gameWeekId_teamId: {
@@ -618,73 +532,13 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
       }
     }
 
-    // Step 4: Update form for all teams
-    const updateTeamForm = async (teamId: number) => {
-      const recentMatches = await prisma.match.findMany({
-        where: {
-          leagueId: gameWeek.leagueId,
-          status: 'FINISHED',
-          OR: [
-            { homeTeamId: teamId },
-            { awayTeamId: teamId }
-          ],
-          homeScore: { not: null },
-          awayScore: { not: null }
-        },
-        orderBy: { matchDate: 'desc' },
-        take: 5
-      });
-
-      const formString = recentMatches
-        .reverse()
-        .map((m) => {
-          const isHome = m.homeTeamId === teamId;
-          const teamScore = isHome ? m.homeScore! : m.awayScore!;
-          const opponentScore = isHome ? m.awayScore! : m.homeScore!;
-
-          if (teamScore > opponentScore) return 'W';
-          if (teamScore < opponentScore) return 'L';
-          return 'D';
-        })
-        .join('');
-
-      await prisma.table.updateMany({
-        where: {
-          leagueId: gameWeek.leagueId,
-          teamId: teamId
-        },
-        data: { form: formString }
-      });
-    };
-
-    for (const teamId of teamsInMatches) {
-      await updateTeamForm(teamId);
-    }
-
-    // Step 5: Recalculate standings positions
-    const allStandings = await prisma.table.findMany({
-      where: { leagueId: gameWeek.leagueId },
-      orderBy: [
-        { points: 'desc' },
-        { goalDifference: 'desc' },
-        { goalsFor: 'desc' }
-      ]
-    });
-
-    for (let i = 0; i < allStandings.length; i++) {
-      await prisma.table.update({
-        where: { id: allStandings[i].id },
-        data: { position: i + 1 }
-      });
-    }
-
     res.json({
       success: true,
-      message: `GameWeek re-synced successfully! Processed ${processedMatches} matches and updated all tables.`,
+      message: `✅ GameWeek ${gameWeek.weekNumber} re-synced! Processed ${processedMatches} finished matches for THIS gameweek only.`,
       data: {
         gameWeekId: parseInt(gameWeekId),
+        weekNumber: gameWeek.weekNumber,
         matchesProcessed: processedMatches,
-        teamsUpdated: teamsInMatches.size,
         errors: errors.length > 0 ? errors : undefined
       }
     });

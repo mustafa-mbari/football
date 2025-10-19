@@ -246,7 +246,12 @@ export default function GameWeekDetailPage() {
 
   const handleSyncWeek = async () => {
     const confirmed = confirm(
-      'Re-sync all matches in this gameweek? This will reset and recalculate all table data from scratch based on current match scores.\n\n⚠️ This will update the league tables with fresh data.'
+      `Re-sync Week ${gameWeek?.weekNumber} Stats?\n\n` +
+      '⚠️ This will:\n' +
+      '1. Reset TeamGameWeekStats for THIS week only\n' +
+      '2. Recalculate stats using ONLY finished matches from THIS week\n' +
+      '3. Does NOT affect the main league table (cumulative standings)\n\n' +
+      'This is safe and only updates this gameweek\'s statistics.'
     );
     if (!confirmed) return;
 
