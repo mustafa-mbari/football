@@ -152,15 +152,31 @@ export const bulkImportMatches = async (req: Request, res: Response) => {
 
 export const bulkImportMatchesByID = async (req: Request, res: Response) => {
   try {
+    console.log('=== Bulk Import Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
     const { league, matches } = req.body as {
       league: string;
       matches: BulkMatchByIdData[];
     };
 
+    console.log('League:', league);
+    console.log('Matches count:', matches?.length);
+    console.log('Matches is array?', Array.isArray(matches));
+
     if (!league || !matches || !Array.isArray(matches)) {
+      console.log('Validation failed - missing league or matches');
       return res.status(400).json({
         success: false,
         message: 'Invalid request body. Expected: { league, matches }',
+      });
+    }
+
+    if (matches.length === 0) {
+      console.log('No matches provided in request');
+      return res.status(400).json({
+        success: false,
+        message: 'No matches provided',
       });
     }
 
@@ -194,15 +210,27 @@ export const bulkImportMatchesByID = async (req: Request, res: Response) => {
       });
     }
 
+    // Get all gameweeks for this league to map weekNumber -> gameWeekId
+    const gameWeeks = await prisma.gameWeek.findMany({
+      where: { leagueId: dbLeague.id },
+      select: { id: true, weekNumber: true }
+    });
+
+    const gameWeekMap = new Map(gameWeeks.map(gw => [gw.weekNumber, gw.id]));
+
     const createdMatches = [];
+    const gameWeekAssignments = [];
     const errors = [];
 
     for (let i = 0; i < matches.length; i++) {
       const match = matches[i];
 
       try {
+        console.log(`Processing match ${i + 1}/${matches.length}:`, match);
+
         // Combine date and time
         const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}:00`);
+        console.log(`Match date/time: ${matchDateTime}`);
 
         // Create match
         const createdMatch = await prisma.match.create({
@@ -219,8 +247,45 @@ export const bulkImportMatchesByID = async (req: Request, res: Response) => {
           },
         });
 
+        console.log(`Match created with ID: ${createdMatch.id}`);
         createdMatches.push(createdMatch);
+
+        // Automatically assign to gameweek if weekNumber is provided and gameweek exists
+        if (match.weekNumber) {
+          const gameWeekId = gameWeekMap.get(match.weekNumber);
+
+          if (gameWeekId) {
+            try {
+              await prisma.gameWeekMatch.create({
+                data: {
+                  gameWeekId: gameWeekId,
+                  matchId: createdMatch.id,
+                  isSynced: false
+                }
+              });
+              gameWeekAssignments.push({
+                matchId: createdMatch.id,
+                gameWeekId: gameWeekId,
+                weekNumber: match.weekNumber
+              });
+            } catch (gwError: any) {
+              // If GameWeekMatch already exists, just continue
+              if (!gwError.message.includes('Unique constraint')) {
+                errors.push({
+                  line: i + 1,
+                  error: `Match created but gameweek assignment failed: ${gwError.message}`,
+                });
+              }
+            }
+          } else {
+            errors.push({
+              line: i + 1,
+              error: `Match created but no gameweek found for week ${match.weekNumber}`,
+            });
+          }
+        }
       } catch (error: any) {
+        console.error(`Error processing match ${i + 1}:`, error);
         errors.push({
           line: i + 1,
           error: error.message,
@@ -228,12 +293,18 @@ export const bulkImportMatchesByID = async (req: Request, res: Response) => {
       }
     }
 
+    console.log(`=== Import Complete ===`);
+    console.log(`Created: ${createdMatches.length} matches`);
+    console.log(`GameWeek assignments: ${gameWeekAssignments.length}`);
+    console.log(`Errors: ${errors.length}`);
+
     res.json({
       success: true,
       count: createdMatches.length,
       imported: createdMatches.length,
+      gameWeekAssignments: gameWeekAssignments.length,
       errors: errors.length > 0 ? errors : undefined,
-      message: `Successfully imported ${createdMatches.length} out of ${matches.length} matches`,
+      message: `Successfully imported ${createdMatches.length} out of ${matches.length} matches and assigned ${gameWeekAssignments.length} to gameweeks`,
     });
   } catch (error: any) {
     console.error('Bulk import by ID error:', error);
