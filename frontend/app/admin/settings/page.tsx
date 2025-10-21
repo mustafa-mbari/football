@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { settingsApi, api } from '@/lib/api';
+import { settingsApi, api, exportApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface PointsRule {
   id: number;
@@ -31,6 +32,24 @@ interface RecalculationResult {
   };
 }
 
+interface ExportableTable {
+  key: string;
+  name: string;
+}
+
+interface ExportResult {
+  success: boolean;
+  message: string;
+  data?: {
+    exportedFiles: Array<{
+      table: string;
+      fileName: string;
+      count: number;
+    }>;
+    exportDir: string;
+  };
+}
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -41,6 +60,12 @@ export default function SettingsPage() {
   const [pointsRules, setPointsRules] = useState<PointsRule[]>([]);
   const [recalcResult, setRecalcResult] = useState<RecalculationResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Export state
+  const [availableTables, setAvailableTables] = useState<ExportableTable[]>([]);
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -66,6 +91,16 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.log('Points rules endpoint not available');
+      }
+
+      // Fetch available tables for export
+      try {
+        const tablesResponse = await exportApi.getAvailableTables();
+        if (tablesResponse.data.success) {
+          setAvailableTables(tablesResponse.data.data);
+        }
+      } catch (error) {
+        console.log('Export endpoint not available');
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -115,6 +150,50 @@ export default function SettingsPage() {
       });
     } finally {
       setRecalculating(false);
+    }
+  };
+
+  const handleToggleTable = (tableKey: string) => {
+    setSelectedTables(prev =>
+      prev.includes(tableKey)
+        ? prev.filter(key => key !== tableKey)
+        : [...prev, tableKey]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedTables.length === availableTables.length) {
+      setSelectedTables([]);
+    } else {
+      setSelectedTables(availableTables.map(t => t.key));
+    }
+  };
+
+  const handleExportData = async () => {
+    if (selectedTables.length === 0) {
+      showMessage('error', 'Please select at least one table to export');
+      return;
+    }
+
+    if (!confirm(`This will export ${selectedTables.length} table(s) and OVERWRITE existing seed files. Are you sure?`)) {
+      return;
+    }
+
+    setExporting(true);
+    setExportResult(null);
+
+    try {
+      const response = await exportApi.exportData(selectedTables);
+      setExportResult(response.data);
+      showMessage('success', 'Data exported successfully!');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.message || 'Failed to export data');
+      setExportResult({
+        success: false,
+        message: error.response?.data?.message || 'Failed to export data'
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -310,6 +389,116 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Data Export/Backup Card */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Database Export / Backup</CardTitle>
+            <CardDescription>
+              Export selected database tables to seed files for backup or migration
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+              <h4 className="font-semibold text-orange-900 dark:text-orange-300 mb-2">⚠️ Warning:</h4>
+              <ul className="text-sm text-orange-800 dark:text-orange-400 space-y-1">
+                <li>• This will OVERWRITE existing seed files in prisma/seeds/data/</li>
+                <li>• Select which tables you want to export</li>
+                <li>• Exported data can be used for backup or seeding new environments</li>
+                <li>• Make sure you have a backup before exporting</li>
+              </ul>
+            </div>
+
+            {availableTables.length > 0 && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b">
+                    <Label className="font-semibold">Select Tables to Export</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSelectAll}
+                    >
+                      {selectedTables.length === availableTables.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-2">
+                    {availableTables.map((table) => (
+                      <div
+                        key={table.key}
+                        className="flex items-center space-x-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+                      >
+                        <Checkbox
+                          id={table.key}
+                          checked={selectedTables.includes(table.key)}
+                          onCheckedChange={() => handleToggleTable(table.key)}
+                        />
+                        <label
+                          htmlFor={table.key}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {table.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-sm text-slate-600 dark:text-slate-400 pt-2 border-t">
+                    Selected: <strong>{selectedTables.length}</strong> out of <strong>{availableTables.length}</strong> tables
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleExportData}
+                  disabled={exporting || selectedTables.length === 0}
+                  className="w-full"
+                  variant="default"
+                >
+                  {exporting ? 'Exporting...' : `Export ${selectedTables.length} Table(s)`}
+                </Button>
+
+                {exportResult && (
+                  <div className={`mt-4 p-4 rounded-lg border ${
+                    exportResult.success
+                      ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                      : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                  }`}>
+                    <h4 className={`font-semibold mb-2 ${
+                      exportResult.success
+                        ? 'text-green-900 dark:text-green-300'
+                        : 'text-red-900 dark:text-red-300'
+                    }`}>
+                      {exportResult.success ? '✓ Export Successful' : '✗ Export Failed'}
+                    </h4>
+                    <p className={`text-sm mb-2 ${
+                      exportResult.success
+                        ? 'text-green-800 dark:text-green-400'
+                        : 'text-red-800 dark:text-red-400'
+                    }`}>
+                      {exportResult.message}
+                    </p>
+                    {exportResult.data && (
+                      <div className="text-sm text-green-800 dark:text-green-400 space-y-1">
+                        <p className="font-semibold">Exported Files:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {exportResult.data.exportedFiles.map((file, index) => (
+                            <li key={index}>
+                              {file.table}: {file.count} record(s) → {file.fileName}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-2 font-mono text-xs bg-green-100 dark:bg-green-900/30 p-2 rounded">
+                          📁 {exportResult.data.exportDir}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

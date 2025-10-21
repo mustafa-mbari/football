@@ -20,6 +20,7 @@ import settingsRoutes from './routes/settingsRoutes';
 import pointsRuleRoutes from './routes/pointsRuleRoutes';
 import groupRoutes from './routes/groupRoutes';
 import changeRequestRoutes from './routes/changeRequestRoutes';
+import exportRoutes from './routes/exportRoutes';
 
 dotenv.config();
 
@@ -66,6 +67,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/points-rules', pointsRuleRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/change-requests', changeRequestRoutes);
+app.use('/api/export', exportRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
