@@ -201,5 +201,9 @@ export const footballDataApi = {
   getStandings: (competitionCode: string, season?: string, matchday?: number) =>
     api.get(`/football-data/competitions/${competitionCode}/standings`, {
       params: { season, matchday }
-    })
+    }),
+  prepareGameWeekSync: (gameWeekId: number) =>
+    api.get(`/football-data/gameweeks/${gameWeekId}/prepare-sync`),
+  executeGameWeekSync: (gameWeekId: number, syncPlan: any[]) =>
+    api.post(`/football-data/gameweeks/${gameWeekId}/execute-sync`, { syncPlan })
 };

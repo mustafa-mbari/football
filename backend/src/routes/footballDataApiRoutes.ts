@@ -3,7 +3,9 @@ import {
   getCompetitions,
   getTeams,
   getMatches,
-  getStandings
+  getStandings,
+  prepareGameWeekSync,
+  executeGameWeekSync
 } from '../controllers/footballDataApiController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
 
@@ -25,5 +27,9 @@ router.get('/teams/:teamId/matches', getMatches);
 
 // Get standings for a competition
 router.get('/competitions/:competitionCode/standings', getStandings);
+
+// GameWeek sync endpoints
+router.get('/gameweeks/:gameWeekId/prepare-sync', prepareGameWeekSync);
+router.post('/gameweeks/:gameWeekId/execute-sync', executeGameWeekSync);
 
 export default router;
