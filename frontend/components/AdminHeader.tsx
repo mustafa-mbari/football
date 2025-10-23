@@ -123,6 +123,15 @@ export default function AdminHeader() {
                 Settings
               </Button>
             </Link>
+            <Link href="/admin/football-data-api">
+              <Button
+                variant={isActive('/admin/football-data-api') ? 'secondary' : 'ghost'}
+                size="sm"
+                className={isActive('/admin/football-data-api') ? 'text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}
+              >
+                Football API
+              </Button>
+            </Link>
 
             {/* Divider */}
             <div className="h-8 w-px bg-slate-600 mx-2"></div>
@@ -257,6 +266,14 @@ export default function AdminHeader() {
                       className={`w-full justify-start h-11 ${isActive('/admin/settings') ? 'text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
                     >
                       ⚙️ Settings
+                    </Button>
+                  </Link>
+                  <Link href="/admin/football-data-api" onClick={closeMobileMenu}>
+                    <Button
+                      variant={isActive('/admin/football-data-api') ? 'secondary' : 'ghost'}
+                      className={`w-full justify-start h-11 ${isActive('/admin/football-data-api') ? 'text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
+                    >
+                      🌐 Football API
                     </Button>
                   </Link>
 

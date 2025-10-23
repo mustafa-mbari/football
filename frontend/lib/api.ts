@@ -170,3 +170,36 @@ export const changeRequestsApi = {
   reject: (id: number, reviewNote?: string) =>
     api.post(`/change-requests/${id}/reject`, { reviewNote })
 };
+
+// Football Data API (football-data.org)
+export const footballDataApi = {
+  getCompetitions: () => api.get('/football-data/competitions'),
+  getTeams: (competitionCode: string, season?: string) =>
+    api.get(`/football-data/competitions/${competitionCode}/teams`, {
+      params: { season }
+    }),
+  getMatches: (params: {
+    competitionCode?: string;
+    teamId?: number;
+    matchday?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    status?: string;
+    season?: string;
+  }) => {
+    const { competitionCode, teamId, ...queryParams } = params;
+    let url = '/football-data/matches';
+
+    if (teamId) {
+      url = `/football-data/teams/${teamId}/matches`;
+    } else if (competitionCode) {
+      url = `/football-data/competitions/${competitionCode}/matches`;
+    }
+
+    return api.get(url, { params: queryParams });
+  },
+  getStandings: (competitionCode: string, season?: string, matchday?: number) =>
+    api.get(`/football-data/competitions/${competitionCode}/standings`, {
+      params: { season, matchday }
+    })
+};

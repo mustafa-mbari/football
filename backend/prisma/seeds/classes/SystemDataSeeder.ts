@@ -99,6 +99,11 @@ export class SystemDataSeeder {
         key: 'PREDICTION_DEADLINE_HOURS',
         value: '4',
         description: 'Hours before match start when predictions are locked'
+      },
+      {
+        key: 'FOOTBALL_DATA_API_TOKEN',
+        value: '10dbc7b8a2ce4823b18e2e6dccfaf329',
+        description: 'API token for football-data.org API (Free tier: 12 competitions, 10 calls/minute)'
       }
     ];
 
