@@ -17,8 +17,11 @@ The `apiName` field in the Team model stores the exact team name as it appears i
 ✅ **Bundesliga Teams (18/18 mapped)**
 - All Bundesliga teams have been mapped and should sync correctly
 
+✅ **Serie A Teams (20/20 mapped)**
+- All Serie A teams have been mapped and should sync correctly
+
 ⚠️ **Other Leagues**
-- Teams from other leagues (Serie A, Ligue 1, etc.) may need API names added
+- Teams from other leagues (Ligue 1, Eredivisie, etc.) may need API names added
 
 ## How to Add API Names for Teams
 
