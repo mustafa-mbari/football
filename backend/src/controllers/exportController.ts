@@ -167,8 +167,13 @@ async function exportTable(tableName: ExportableTable) {
     case 'teams':
       return await prisma.team.findMany({
         include: {
-          league: {
-            select: { code: true }
+          leagues: {
+            where: { isActive: true },
+            include: {
+              league: {
+                select: { code: true, name: true }
+              }
+            }
           }
         }
       });

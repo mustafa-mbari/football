@@ -10,20 +10,31 @@ router.get('/', async (req, res) => {
     const { leagueId } = req.query;
 
     const teams = await prisma.team.findMany({
-      where: leagueId ? { leagueId: parseInt(leagueId as string) } : undefined,
+      where: leagueId ? {
+        leagues: {
+          some: {
+            leagueId: parseInt(leagueId as string),
+            isActive: true
+          }
+        }
+      } : undefined,
       include: {
-        league: {
-          select: {
-            id: true,
-            name: true,
-            logoUrl: true
+        leagues: {
+          where: { isActive: true },
+          include: {
+            league: {
+              select: {
+                id: true,
+                name: true,
+                logoUrl: true
+              }
+            }
           }
         }
       },
-      orderBy: [
-        { league: { name: 'asc' } },
-        { name: 'asc' }
-      ]
+      orderBy: {
+        name: 'asc'
+      }
     });
 
     res.json({

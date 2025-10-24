@@ -33,14 +33,21 @@ export const createGroup = async (req: Request, res: Response) => {
       const teams = await prisma.team.findMany({
         where: {
           id: { in: allowedTeamIds },
-          ...(leagueId && { leagueId: parseInt(leagueId) })
+          ...(leagueId && {
+            leagues: {
+              some: {
+                leagueId: parseInt(leagueId),
+                isActive: true
+              }
+            }
+          })
         }
       });
 
       if (teams.length !== allowedTeamIds.length) {
         return res.status(400).json({
           success: false,
-          message: 'Some teams are invalid or do not exist'
+          message: 'Some teams are invalid or do not belong to the specified league'
         });
       }
     }

@@ -102,7 +102,7 @@ model League {
   priority    Int         @default(0)
 
   // Relations
-  teams       Team[]
+  teams       TeamLeague[] // Many-to-many with Team
   matches     Match[]
   tables      Table[]
   gameWeeks   GameWeek[]
@@ -130,8 +130,7 @@ model Team {
   primaryColor String?
 
   // Relations
-  league              League               @relation(fields: [leagueId], references: [id])
-  leagueId            Int
+  leagues             TeamLeague[]         // Many-to-many with League
   homeMatches         Match[]              @relation("HomeTeam")
   awayMatches         Match[]              @relation("AwayTeam")
   tables              Table[]
@@ -143,8 +142,25 @@ model Team {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  @@index([leagueId])
   @@index([code])
+}
+
+// Junction table for Team-League many-to-many relationship
+model TeamLeague {
+  id        Int      @id @default(autoincrement())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    Int
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId  Int
+  isActive  Boolean  @default(true)  // Can deactivate team from league without deletion
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, leagueId])
+  @@index([teamId])
+  @@index([leagueId])
+  @@index([isActive])
 }
 
 model UserFavoriteTeam {

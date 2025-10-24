@@ -60,7 +60,14 @@ export const bulkImportMatches = async (req: Request, res: Response) => {
 
     const dbLeague = await prisma.league.findFirst({
       where: { code: leagueCode },
-      include: { teams: true },
+      include: {
+        teams: {
+          where: { isActive: true },
+          include: {
+            team: true
+          }
+        }
+      },
     });
 
     if (!dbLeague) {
@@ -78,13 +85,13 @@ export const bulkImportMatches = async (req: Request, res: Response) => {
 
       try {
         // Find home team
-        const homeTeam = dbLeague.teams.find(
-          (t) =>
-            t.name.toLowerCase() === match.homeTeam.toLowerCase() ||
-            t.code.toLowerCase() === match.homeTeam.toLowerCase()
+        const homeTeamLeague = dbLeague.teams.find(
+          (tl) =>
+            tl.team.name.toLowerCase() === match.homeTeam.toLowerCase() ||
+            tl.team.code.toLowerCase() === match.homeTeam.toLowerCase()
         );
 
-        if (!homeTeam) {
+        if (!homeTeamLeague) {
           errors.push({
             line: i + 1,
             error: `Home team not found: ${match.homeTeam}`,
@@ -93,13 +100,13 @@ export const bulkImportMatches = async (req: Request, res: Response) => {
         }
 
         // Find away team
-        const awayTeam = dbLeague.teams.find(
-          (t) =>
-            t.name.toLowerCase() === match.awayTeam.toLowerCase() ||
-            t.code.toLowerCase() === match.awayTeam.toLowerCase()
+        const awayTeamLeague = dbLeague.teams.find(
+          (tl) =>
+            tl.team.name.toLowerCase() === match.awayTeam.toLowerCase() ||
+            tl.team.code.toLowerCase() === match.awayTeam.toLowerCase()
         );
 
-        if (!awayTeam) {
+        if (!awayTeamLeague) {
           errors.push({
             line: i + 1,
             error: `Away team not found: ${match.awayTeam}`,
@@ -114,8 +121,8 @@ export const bulkImportMatches = async (req: Request, res: Response) => {
         const createdMatch = await prisma.match.create({
           data: {
             leagueId: dbLeague.id,
-            homeTeamId: homeTeam.id,
-            awayTeamId: awayTeam.id,
+            homeTeamId: homeTeamLeague.team.id,
+            awayTeamId: awayTeamLeague.team.id,
             matchDate: matchDateTime,
             weekNumber: match.weekNumber,
             status: match.status as any,

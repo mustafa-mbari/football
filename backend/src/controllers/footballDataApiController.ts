@@ -190,7 +190,12 @@ const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
   // Priority 1: Try exact match with apiName field (most reliable)
   let team = await prisma.team.findFirst({
     where: {
-      leagueId,
+      leagues: {
+        some: {
+          leagueId,
+          isActive: true
+        }
+      },
       apiName: { equals: apiTeamName, mode: 'insensitive' }
     }
   });
@@ -200,7 +205,12 @@ const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
   // Priority 2: Try exact match with name or shortName
   team = await prisma.team.findFirst({
     where: {
-      leagueId,
+      leagues: {
+        some: {
+          leagueId,
+          isActive: true
+        }
+      },
       OR: [
         { name: { equals: apiTeamName, mode: 'insensitive' } },
         { shortName: { equals: apiTeamName, mode: 'insensitive' } }
@@ -213,7 +223,12 @@ const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
   // Priority 3: Try fuzzy match (contains) - fallback only
   team = await prisma.team.findFirst({
     where: {
-      leagueId,
+      leagues: {
+        some: {
+          leagueId,
+          isActive: true
+        }
+      },
       OR: [
         { apiName: { contains: apiTeamName, mode: 'insensitive' } },
         { name: { contains: apiTeamName, mode: 'insensitive' } },

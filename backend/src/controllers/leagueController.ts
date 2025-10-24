@@ -37,7 +37,12 @@ export const getLeagueById = async (req: Request, res: Response) => {
     const league = await prisma.league.findUnique({
       where: { id: parseInt(id) },
       include: {
-        teams: true,
+        teams: {
+          where: { isActive: true },
+          include: {
+            team: true
+          }
+        },
         matches: {
           include: {
             homeTeam: true,
@@ -74,7 +79,14 @@ export const getTeamsByLeague = async (req: Request, res: Response) => {
     const { leagueId } = req.params;
 
     const teams = await prisma.team.findMany({
-      where: { leagueId: parseInt(leagueId) },
+      where: {
+        leagues: {
+          some: {
+            leagueId: parseInt(leagueId),
+            isActive: true
+          }
+        }
+      },
       orderBy: { name: 'asc' }
     });
 
@@ -177,6 +189,29 @@ export const updateLeague = async (req: Request, res: Response) => {
       }
     }
 
+    // If name or season is being changed, check for duplicate (name, season) combination
+    const newName = name || existingLeague.name;
+    const newSeason = season || existingLeague.season;
+
+    if ((name && name !== existingLeague.name) || (season && season !== existingLeague.season)) {
+      const duplicateExists = await prisma.league.findFirst({
+        where: {
+          AND: [
+            { name: newName },
+            { season: newSeason },
+            { id: { not: parseInt(id) } } // Exclude current league
+          ]
+        }
+      });
+
+      if (duplicateExists) {
+        return res.status(400).json({
+          success: false,
+          message: `A league named "${newName}" already exists for season "${newSeason}"`
+        });
+      }
+    }
+
     const league = await prisma.league.update({
       where: { id: parseInt(id) },
       data: {
@@ -203,9 +238,34 @@ export const updateLeague = async (req: Request, res: Response) => {
       message: 'League updated successfully'
     });
   } catch (error: any) {
+    console.error('Update league error:', error);
+
+    // Handle Prisma-specific errors
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'A league with this combination of name and season already exists'
+      });
+    }
+
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'League not found'
+      });
+    }
+
+    // Handle date parsing errors
+    if (error.message && error.message.includes('Invalid time value')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Please use YYYY-MM-DD format.'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to update league. Please check all fields and try again.'
     });
   }
 };
