@@ -117,6 +117,8 @@ To find the exact API name for a team:
   - Juventus FC → Juventus FC
   - Inter Milan → FC Internazionale Milano
   - AC Milan → AC Milan
+  - US Sassuolo → US Sassuolo Calcio
+  - Pisa SC → AC Pisa 1909
 
 ### Premier League (England)
 ✅ All mapped! Examples:
