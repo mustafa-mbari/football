@@ -170,3 +170,9 @@ export const changeRequestsApi = {
   reject: (id: number, reviewNote?: string) =>
     api.post(`/change-requests/${id}/reject`, { reviewNote })
 };
+
+// Export API
+export const exportApi = {
+  getAvailableTables: () => api.get('/export/tables'),
+  exportData: (tables: string[]) => api.post('/export/export', { tables })
+};
