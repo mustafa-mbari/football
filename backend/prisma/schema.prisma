@@ -122,6 +122,7 @@ model Team {
   name         String
   shortName    String?
   code         String             @unique
+  apiName      String?            // Name used by external APIs (e.g., football-data.org)
   logoUrl      String?
   stadiumName  String?
   foundedYear  Int?

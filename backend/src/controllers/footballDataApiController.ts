@@ -4,8 +4,14 @@ import axios from 'axios';
 
 const FOOTBALL_DATA_API_BASE_URL = 'https://api.football-data.org/v4';
 
-// Helper function to get API token from settings
+// Helper function to get API token from environment or database settings
 const getApiToken = async (): Promise<string | null> => {
+  // First, check environment variable
+  if (process.env.FOOTBALL_DATA_API_TOKEN) {
+    return process.env.FOOTBALL_DATA_API_TOKEN;
+  }
+
+  // Fall back to database setting
   const setting = await prisma.appSettings.findUnique({
     where: { key: 'FOOTBALL_DATA_API_TOKEN' }
   });
@@ -181,8 +187,18 @@ export const getStandings = async (req: Request, res: Response) => {
 
 // Helper function to match team by name
 const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
-  // Try exact match first
+  // Priority 1: Try exact match with apiName field (most reliable)
   let team = await prisma.team.findFirst({
+    where: {
+      leagueId,
+      apiName: { equals: apiTeamName, mode: 'insensitive' }
+    }
+  });
+
+  if (team) return team;
+
+  // Priority 2: Try exact match with name or shortName
+  team = await prisma.team.findFirst({
     where: {
       leagueId,
       OR: [
@@ -194,11 +210,12 @@ const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
 
   if (team) return team;
 
-  // Try fuzzy match (contains)
+  // Priority 3: Try fuzzy match (contains) - fallback only
   team = await prisma.team.findFirst({
     where: {
       leagueId,
       OR: [
+        { apiName: { contains: apiTeamName, mode: 'insensitive' } },
         { name: { contains: apiTeamName, mode: 'insensitive' } },
         { shortName: { contains: apiTeamName, mode: 'insensitive' } }
       ]

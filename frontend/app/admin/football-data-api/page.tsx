@@ -111,11 +111,11 @@ export default function FootballDataApiPage() {
       const params: any = {};
 
       if (selectedCompetition) params.competitionCode = selectedCompetition;
-      if (selectedTeam) params.teamId = parseInt(selectedTeam);
+      if (selectedTeam && selectedTeam !== 'all') params.teamId = parseInt(selectedTeam);
       if (matchday) params.matchday = parseInt(matchday);
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
-      if (matchStatus) params.status = matchStatus;
+      if (matchStatus && matchStatus !== 'all') params.status = matchStatus;
       if (season) params.season = season;
 
       const response = await footballDataApi.getMatches(params);
@@ -249,7 +249,7 @@ export default function FootballDataApiPage() {
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All teams</SelectItem>
+                    <SelectItem value="all">All teams</SelectItem>
                     {teams.map((team) => (
                       <SelectItem key={team.id} value={team.id.toString()}>
                         {team.name}
@@ -301,7 +301,7 @@ export default function FootballDataApiPage() {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
                     {MATCH_STATUSES.map((status) => (
                       <SelectItem key={status.value} value={status.value}>
                         {status.label}
