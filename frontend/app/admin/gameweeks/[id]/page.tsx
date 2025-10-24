@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { predictionsApi } from '@/lib/api';
+import { predictionsApi, footballDataApi } from '@/lib/api';
 
 interface Team {
   id: number;
@@ -81,7 +81,11 @@ export default function GameWeekDetailPage() {
   const [syncingWeek, setSyncingWeek] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [syncData, setSyncData] = useState<any>(null);
+  const [loadingSyncData, setLoadingSyncData] = useState(false);
+  const [executingSync, setExecutingSync] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
   const [prevGameWeekId, setPrevGameWeekId] = useState<number | null>(null);
   const [nextGameWeekId, setNextGameWeekId] = useState<number | null>(null);
@@ -432,6 +436,48 @@ export default function GameWeekDetailPage() {
     }
   };
 
+  const handleOpenSyncDialog = async () => {
+    if (!gameWeek) return;
+
+    setLoadingSyncData(true);
+    setSyncDialogOpen(true);
+    setSyncData(null);
+
+    try {
+      const response = await footballDataApi.prepareGameWeekSync(gameWeek.id);
+      setSyncData(response.data.data);
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to load sync data');
+      setSyncDialogOpen(false);
+    } finally {
+      setLoadingSyncData(false);
+    }
+  };
+
+  const handleExecuteSync = async () => {
+    if (!syncData || !gameWeek) return;
+
+    const confirmed = confirm(
+      `Sync ${syncData.summary.toCreate} new matches and update ${syncData.summary.toUpdate} existing matches?\n\n` +
+      'This will create new matches and update match details (date, time, scores, status) from the Football Data API.'
+    );
+
+    if (!confirmed) return;
+
+    setExecutingSync(true);
+
+    try {
+      const response = await footballDataApi.executeGameWeekSync(gameWeek.id, syncData.syncPlan);
+      alert(response.data.message || 'Sync completed successfully!');
+      setSyncDialogOpen(false);
+      fetchGameWeek();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to execute sync');
+    } finally {
+      setExecutingSync(false);
+    }
+  };
+
   const getLeagueFlag = (country: string): string => {
     const flags: { [key: string]: string } = {
       England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
@@ -568,6 +614,13 @@ export default function GameWeekDetailPage() {
                 className="border-blue-500 text-blue-600 hover:bg-blue-50"
               >
                 ➕ Add Matches
+              </Button>
+              <Button
+                onClick={handleOpenSyncDialog}
+                variant="outline"
+                className="border-orange-500 text-orange-600 hover:bg-orange-50"
+              >
+                🌐 Sync from API
               </Button>
               <Button
                 onClick={handleSyncWeek}
@@ -1115,6 +1168,189 @@ export default function GameWeekDetailPage() {
             </Button>
             <Button variant="destructive" onClick={confirmDeleteMatch}>
               Delete Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sync from API Dialog */}
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sync Matches from Football Data API</DialogTitle>
+            <DialogDescription>
+              Review matches that will be synced from football-data.org to your database
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingSyncData ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                <p className="text-slate-600 dark:text-slate-400">Loading sync data...</p>
+              </div>
+            </div>
+          ) : syncData ? (
+            <div className="space-y-4 py-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{syncData.summary.total}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Total Matches</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{syncData.summary.toCreate}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">New Matches</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{syncData.summary.toUpdate}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Updates</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">{syncData.summary.cannotSync}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Cannot Sync</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Unmatched Teams Warning */}
+              {syncData.unmatchedTeams.length > 0 && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <h4 className="font-semibold text-red-900 dark:text-red-300 mb-2">⚠️ Unmatched Teams:</h4>
+                  <p className="text-sm text-red-800 dark:text-red-400 mb-2">
+                    The following teams from the API could not be matched to teams in your database:
+                  </p>
+                  <ul className="text-sm text-red-800 dark:text-red-400 space-y-1">
+                    {syncData.unmatchedTeams.map((teamName: string, idx: number) => (
+                      <li key={idx}>• {teamName}</li>
+                    ))}
+                  </ul>
+                  <p className="text-sm text-red-800 dark:text-red-400 mt-2">
+                    Matches with unmatched teams will be skipped.
+                  </p>
+                </div>
+              )}
+
+              {/* Matches Table */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-96">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
+                      <tr>
+                        <th className="py-3 px-4 text-left font-semibold">Action</th>
+                        <th className="py-3 px-4 text-left font-semibold">Home Team</th>
+                        <th className="py-3 px-4 text-center font-semibold">Score</th>
+                        <th className="py-3 px-4 text-left font-semibold">Away Team</th>
+                        <th className="py-3 px-4 text-left font-semibold">Date & Time</th>
+                        <th className="py-3 px-4 text-left font-semibold">Status</th>
+                        <th className="py-3 px-4 text-center font-semibold">Sync</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {syncData.syncPlan.map((match: any, idx: number) => (
+                        <tr
+                          key={idx}
+                          className={`border-b border-slate-100 dark:border-slate-800 ${
+                            !match.canSync ? 'bg-red-50 dark:bg-red-900/10' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <Badge variant={match.action === 'CREATE' ? 'default' : 'secondary'} className={
+                              match.action === 'CREATE' ? 'bg-green-600' : 'bg-orange-600'
+                            }>
+                              {match.action}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium">{match.homeTeam.apiName}</div>
+                              {match.homeTeam.dbTeam && (
+                                <div className="text-xs text-slate-500">→ {match.homeTeam.dbTeam.name}</div>
+                              )}
+                              {!match.homeTeam.matched && (
+                                <div className="text-xs text-red-600">⚠️ Not matched</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold">
+                            {match.homeScore !== null && match.awayScore !== null
+                              ? `${match.homeScore} - ${match.awayScore}`
+                              : '- : -'
+                            }
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="font-medium">{match.awayTeam.apiName}</div>
+                              {match.awayTeam.dbTeam && (
+                                <div className="text-xs text-slate-500">→ {match.awayTeam.dbTeam.name}</div>
+                              )}
+                              {!match.awayTeam.matched && (
+                                <div className="text-xs text-red-600">⚠️ Not matched</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {new Date(match.matchDate).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline">{match.status}</Badge>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {match.canSync ? (
+                              <span className="text-green-600">✓</span>
+                            ) : (
+                              <span className="text-red-600">✗</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">ℹ️ What will happen:</h4>
+                <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+                  <li>• <strong>CREATE:</strong> New matches will be added to the database and linked to this gameweek</li>
+                  <li>• <strong>UPDATE:</strong> Existing matches will have their date, time, scores, and status updated</li>
+                  <li>• Matches marked as unsynced will need to be re-synced to update standings</li>
+                  <li>• Only matches with matched teams will be synced</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-slate-600 dark:text-slate-400">
+              No sync data available
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={executingSync}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleExecuteSync}
+              disabled={!syncData || loadingSyncData || executingSync || syncData?.summary.toCreate + syncData?.summary.toUpdate === 0}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {executingSync ? 'Syncing...' : `Confirm Sync (${syncData?.summary.toCreate || 0} new, ${syncData?.summary.toUpdate || 0} updates)`}
             </Button>
           </DialogFooter>
         </DialogContent>
