@@ -546,9 +546,9 @@ function DashboardContent() {
                     </div>
 
                     {/* Match Display - Desktop & Tablet */}
-                    <div className="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                    <div className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-4 items-center">
                       {/* Home Team */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
                                       bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
                                       rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
@@ -563,11 +563,11 @@ function DashboardContent() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate" title={prediction.match.homeTeam.name}>
                             {prediction.match.homeTeam.name}
                           </p>
                           {prediction.match.homeTeam.shortName && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {prediction.match.homeTeam.shortName}
                             </p>
                           )}
@@ -575,8 +575,8 @@ function DashboardContent() {
                       </div>
 
                       {/* Score Section */}
-                      <div className="flex flex-col items-center gap-2 px-6">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center gap-2 px-4 flex-shrink-0">
+                        <div className="flex items-center gap-2">
                           <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             {prediction.predictedHomeScore}
                           </span>
@@ -586,7 +586,7 @@ function DashboardContent() {
                           </span>
                         </div>
                         {prediction.match.status === 'FINISHED' && (
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             <span>Actual:</span>
                             <span className="font-semibold">
                               {prediction.match.homeScore} - {prediction.match.awayScore}
@@ -594,14 +594,14 @@ function DashboardContent() {
                           </div>
                         )}
                         {prediction.match.status !== 'FINISHED' && (
-                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             Your Prediction
                           </span>
                         )}
                       </div>
 
                       {/* Away Team */}
-                      <div className="flex items-center gap-3 flex-row-reverse">
+                      <div className="flex items-center gap-3 flex-row-reverse min-w-0">
                         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center
                                       bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800
                                       rounded-xl shadow-sm border border-slate-300 dark:border-slate-600">
@@ -616,11 +616,11 @@ function DashboardContent() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0 text-right">
-                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate" title={prediction.match.awayTeam.name}>
                             {prediction.match.awayTeam.name}
                           </p>
                           {prediction.match.awayTeam.shortName && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {prediction.match.awayTeam.shortName}
                             </p>
                           )}
@@ -645,8 +645,8 @@ function DashboardContent() {
                             <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
                           )}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate" title={prediction.match.homeTeam.name}>
                             {prediction.match.homeTeam.name}
                           </p>
                         </div>
@@ -670,8 +670,8 @@ function DashboardContent() {
                             <div className="w-7 h-7 bg-slate-300 dark:bg-slate-600 rounded-full" />
                           )}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-sm text-slate-900 dark:text-white">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate" title={prediction.match.awayTeam.name}>
                             {prediction.match.awayTeam.name}
                           </p>
                         </div>

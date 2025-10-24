@@ -574,7 +574,7 @@ function LeagueContent() {
                         {/* Home Team - Column 1 */}
                         <div className="flex flex-col items-center gap-0.5">
                           {getTeamLogo(match.homeTeam)}
-                          <p className="font-semibold text-[9px] text-center w-full leading-tight break-words hyphens-auto" style={{wordBreak: 'break-word'}}>{match.homeTeam.name}</p>
+                          <p className="font-semibold text-[9px] text-center w-full leading-tight truncate" title={match.homeTeam.name}>{match.homeTeam.name}</p>
                         </div>
 
                         {/* Score/Prediction - Column 2 (Center) */}
@@ -702,7 +702,7 @@ function LeagueContent() {
                         {/* Away Team - Column 3 */}
                         <div className="flex flex-col items-center gap-0.5">
                           {getTeamLogo(match.awayTeam)}
-                          <p className="font-semibold text-[9px] text-center w-full leading-tight break-words hyphens-auto" style={{wordBreak: 'break-word'}}>{match.awayTeam.name}</p>
+                          <p className="font-semibold text-[9px] text-center w-full leading-tight truncate" title={match.awayTeam.name}>{match.awayTeam.name}</p>
                         </div>
                       </div>
 
