@@ -206,4 +206,8 @@ export const footballDataApi = {
     api.get(`/football-data/gameweeks/${gameWeekId}/prepare-sync`),
   executeGameWeekSync: (gameWeekId: number, syncPlan: any[]) =>
     api.post(`/football-data/gameweeks/${gameWeekId}/execute-sync`, { syncPlan })
+// Export API
+export const exportApi = {
+  getAvailableTables: () => api.get('/export/tables'),
+  exportData: (tables: string[]) => api.post('/export/export', { tables })
 };
