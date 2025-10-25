@@ -1,54 +1,31 @@
 import { Router } from 'express';
 import { getTeamsByLeague } from '../controllers/leagueController';
-import prisma from '../config/database';
+import {
+  getAllTeams,
+  getTeamsNotInLeague,
+  createTeam,
+  addTeamsToLeague,
+  createAndAddTeamsToLeague
+} from '../controllers/teamController';
 
 const router = Router();
 
 // Get all teams (optionally filtered by leagueId)
-router.get('/', async (req, res) => {
-  try {
-    const { leagueId } = req.query;
+router.get('/', getAllTeams);
 
-    const teams = await prisma.team.findMany({
-      where: leagueId ? {
-        leagues: {
-          some: {
-            leagueId: parseInt(leagueId as string),
-            isActive: true
-          }
-        }
-      } : undefined,
-      include: {
-        leagues: {
-          where: { isActive: true },
-          include: {
-            league: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    });
+// Get teams not in a specific league
+router.get('/not-in-league/:leagueId', getTeamsNotInLeague);
 
-    res.json({
-      success: true,
-      data: teams
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
+// Get teams by league (legacy route)
 router.get('/league/:leagueId', getTeamsByLeague);
+
+// Create new team
+router.post('/', createTeam);
+
+// Add existing teams to league (bulk)
+router.post('/add-to-league', addTeamsToLeague);
+
+// Create teams and add to league (bulk)
+router.post('/create-and-add-to-league', createAndAddTeamsToLeague);
 
 export default router;

@@ -5,7 +5,8 @@ import {
   getMatches,
   getStandings,
   prepareGameWeekSync,
-  executeGameWeekSync
+  executeGameWeekSync,
+  fetchAndImportTeams
 } from '../controllers/footballDataApiController';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
 
@@ -19,6 +20,9 @@ router.get('/competitions', getCompetitions);
 
 // Get teams for a specific competition
 router.get('/competitions/:competitionCode/teams', getTeams);
+
+// Fetch and optionally import teams from API
+router.post('/competitions/:competitionCode/fetch-import-teams', fetchAndImportTeams);
 
 // Get matches (with various filters)
 router.get('/matches', getMatches);

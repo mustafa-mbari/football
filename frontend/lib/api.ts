@@ -171,6 +171,28 @@ export const changeRequestsApi = {
     api.post(`/change-requests/${id}/reject`, { reviewNote })
 };
 
+// Teams API
+export const teamsApi = {
+  getAll: (leagueId?: number) => api.get('/teams', { params: { leagueId } }),
+  getNotInLeague: (leagueId: number) => api.get(`/teams/not-in-league/${leagueId}`),
+  create: (data: {
+    name: string;
+    code: string;
+    shortName?: string;
+    apiName?: string;
+    logoUrl?: string;
+    stadiumName?: string;
+    foundedYear?: number;
+    website?: string;
+    primaryColor?: string;
+    leagueId?: number;
+  }) => api.post('/teams', data),
+  addToLeague: (leagueId: number, teamIds: number[]) =>
+    api.post('/teams/add-to-league', { leagueId, teamIds }),
+  createAndAddToLeague: (leagueId: number, teams: any[]) =>
+    api.post('/teams/create-and-add-to-league', { leagueId, teams })
+};
+
 // Football Data API (football-data.org)
 export const footballDataApi = {
   getCompetitions: () => api.get('/football-data/competitions'),
@@ -178,6 +200,14 @@ export const footballDataApi = {
     api.get(`/football-data/competitions/${competitionCode}/teams`, {
       params: { season }
     }),
+  fetchAndImportTeams: (
+    competitionCode: string,
+    data: {
+      season?: string;
+      leagueId?: number;
+      importSelected?: number[];
+    }
+  ) => api.post(`/football-data/competitions/${competitionCode}/fetch-import-teams`, data),
   getMatches: (params: {
     competitionCode?: string;
     teamId?: number;

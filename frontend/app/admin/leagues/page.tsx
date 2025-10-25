@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { leaguesApi, api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import ManageTeamsDialog from '@/components/admin/ManageTeamsDialog';
 
 interface League {
   id: number;
@@ -35,6 +36,7 @@ export default function AdminLeaguesPage() {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingLeague, setEditingLeague] = useState<League | null>(null);
+  const [manageTeamsLeague, setManageTeamsLeague] = useState<League | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -364,6 +366,14 @@ export default function AdminLeaguesPage() {
 
                   <div className="flex flex-wrap gap-2">
                     <Button
+                      onClick={() => setManageTeamsLeague(league)}
+                      size="sm"
+                      variant="default"
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      Manage Teams
+                    </Button>
+                    <Button
                       onClick={() => handleEdit(league)}
                       size="sm"
                       variant="outline"
@@ -394,6 +404,18 @@ export default function AdminLeaguesPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Manage Teams Dialog */}
+        {manageTeamsLeague && (
+          <ManageTeamsDialog
+            open={!!manageTeamsLeague}
+            onOpenChange={(open) => {
+              if (!open) setManageTeamsLeague(null);
+            }}
+            league={manageTeamsLeague}
+            onTeamsUpdated={fetchLeagues}
+          />
         )}
     </main>
   );

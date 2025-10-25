@@ -86,6 +86,214 @@ export const getTeams = async (req: Request, res: Response) => {
   }
 };
 
+// Fetch teams from API and optionally import them to database
+export const fetchAndImportTeams = async (req: Request, res: Response) => {
+  try {
+    const { competitionCode } = req.params;
+    const { season, leagueId, importSelected } = req.body;
+
+    const apiToken = await getApiToken();
+    if (!apiToken) {
+      return res.status(500).json({
+        success: false,
+        message: 'Football Data API token not configured'
+      });
+    }
+
+    // Fetch teams from API
+    let url = `${FOOTBALL_DATA_API_BASE_URL}/competitions/${competitionCode}/teams`;
+    if (season) {
+      url += `?season=${season}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'X-Auth-Token': apiToken
+      }
+    });
+
+    const apiTeams = response.data.teams || [];
+
+    // If importSelected is provided and leagueId is provided, import the selected teams
+    if (importSelected && Array.isArray(importSelected) && leagueId) {
+      const leagueIdInt = parseInt(leagueId);
+
+      // Verify league exists
+      const league = await prisma.league.findUnique({
+        where: { id: leagueIdInt }
+      });
+
+      if (!league) {
+        return res.status(404).json({
+          success: false,
+          message: 'League not found'
+        });
+      }
+
+      let createdCount = 0;
+      let skippedCount = 0;
+      const errors: string[] = [];
+      const importedTeams: any[] = [];
+
+      for (const teamId of importSelected) {
+        // Find team in API response
+        const apiTeam = apiTeams.find((t: any) => t.id === teamId);
+        if (!apiTeam) {
+          errors.push(`Team with API ID ${teamId} not found in API response`);
+          continue;
+        }
+
+        try {
+          // Generate a code from team name (e.g., "Manchester United" -> "MUN")
+          const generateCode = (name: string): string => {
+            const words = name.split(' ').filter(w => w.length > 2);
+            if (words.length >= 2) {
+              return words.slice(0, 2).map(w => w[0]).join('').toUpperCase() + words[words.length - 1][0].toUpperCase();
+            }
+            return name.substring(0, 3).toUpperCase();
+          };
+
+          let code = generateCode(apiTeam.name);
+
+          // Check if code exists and make it unique if needed
+          let codeExists = await prisma.team.findUnique({ where: { code } });
+          let suffix = 1;
+          while (codeExists) {
+            code = `${generateCode(apiTeam.name)}${suffix}`;
+            codeExists = await prisma.team.findUnique({ where: { code } });
+            suffix++;
+          }
+
+          // Check if team already exists by name or shortName
+          let existingTeam = await prisma.team.findFirst({
+            where: {
+              OR: [
+                { name: { equals: apiTeam.name, mode: 'insensitive' } },
+                { apiName: { equals: apiTeam.name, mode: 'insensitive' } },
+                { shortName: { equals: apiTeam.shortName, mode: 'insensitive' } }
+              ]
+            }
+          });
+
+          if (existingTeam) {
+            // Team exists, check if in league
+            const inLeague = await prisma.teamLeague.findUnique({
+              where: {
+                teamId_leagueId: {
+                  teamId: existingTeam.id,
+                  leagueId: leagueIdInt
+                }
+              }
+            });
+
+            if (!inLeague) {
+              // Add existing team to league
+              await prisma.teamLeague.create({
+                data: {
+                  teamId: existingTeam.id,
+                  leagueId: leagueIdInt,
+                  isActive: true
+                }
+              });
+              importedTeams.push(existingTeam);
+              createdCount++;
+            } else {
+              skippedCount++;
+            }
+            continue;
+          }
+
+          // Create new team
+          const team = await prisma.team.create({
+            data: {
+              name: apiTeam.name,
+              code: code,
+              shortName: apiTeam.shortName || null,
+              apiName: apiTeam.name,
+              logoUrl: apiTeam.crest || null,
+              stadiumName: apiTeam.venue || null,
+              foundedYear: apiTeam.founded || null,
+              website: apiTeam.website || null,
+              primaryColor: apiTeam.clubColors?.split('/')[0]?.trim() || null,
+              leagues: {
+                create: {
+                  leagueId: leagueIdInt,
+                  isActive: true
+                }
+              }
+            },
+            include: {
+              leagues: {
+                where: { isActive: true },
+                include: {
+                  league: {
+                    select: {
+                      id: true,
+                      name: true,
+                      code: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          importedTeams.push(team);
+          createdCount++;
+        } catch (err: any) {
+          errors.push(`Error importing ${apiTeam.name}: ${err.message}`);
+        }
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          apiTeams: apiTeams.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            shortName: t.shortName,
+            crest: t.crest,
+            website: t.website,
+            founded: t.founded,
+            venue: t.venue,
+            clubColors: t.clubColors
+          })),
+          imported: {
+            count: createdCount,
+            skipped: skippedCount,
+            errors,
+            teams: importedTeams
+          }
+        },
+        message: `Successfully imported ${createdCount} teams. Skipped ${skippedCount}.`
+      });
+    }
+
+    // If no import, just return the API teams
+    res.json({
+      success: true,
+      data: {
+        apiTeams: apiTeams.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          shortName: t.shortName,
+          crest: t.crest,
+          website: t.website,
+          founded: t.founded,
+          venue: t.venue,
+          clubColors: t.clubColors
+        }))
+      }
+    });
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || error.message,
+      error: error.response?.data
+    });
+  }
+};
+
 // Get matches with various filters
 export const getMatches = async (req: Request, res: Response) => {
   try {
@@ -186,7 +394,12 @@ export const getStandings = async (req: Request, res: Response) => {
 };
 
 // Helper function to match team by name
-const matchTeamByName = async (apiTeamName: string, leagueId: number) => {
+const matchTeamByName = async (apiTeamName: string | null | undefined, leagueId: number) => {
+  // Return null if no team name provided
+  if (!apiTeamName || apiTeamName.trim() === '') {
+    return null;
+  }
+
   // Priority 1: Try exact match with apiName field (most reliable)
   let team = await prisma.team.findFirst({
     where: {
@@ -281,6 +494,7 @@ export const prepareGameWeekSync = async (req: Request, res: Response) => {
       'Eredivisie': 'DED',
       'Primeira Liga': 'PPL',
       'Champions League': 'CL',
+      'UEFA Champions League': 'CL',
       'Championship': 'ELC'
     };
 
@@ -316,13 +530,13 @@ export const prepareGameWeekSync = async (req: Request, res: Response) => {
 
     for (const apiMatch of apiMatches) {
       // Match teams
-      const homeTeam = await matchTeamByName(apiMatch.homeTeam.name, gameWeek.leagueId);
-      const awayTeam = await matchTeamByName(apiMatch.awayTeam.name, gameWeek.leagueId);
+      const homeTeam = await matchTeamByName(apiMatch.homeTeam?.name, gameWeek.leagueId);
+      const awayTeam = await matchTeamByName(apiMatch.awayTeam?.name, gameWeek.leagueId);
 
-      if (!homeTeam) {
+      if (!homeTeam && apiMatch.homeTeam?.name) {
         unmatchedTeams.add(apiMatch.homeTeam.name);
       }
-      if (!awayTeam) {
+      if (!awayTeam && apiMatch.awayTeam?.name) {
         unmatchedTeams.add(apiMatch.awayTeam.name);
       }
 
@@ -353,12 +567,12 @@ export const prepareGameWeekSync = async (req: Request, res: Response) => {
       syncPlan.push({
         apiMatchId: apiMatch.id,
         homeTeam: {
-          apiName: apiMatch.homeTeam.name,
+          apiName: apiMatch.homeTeam?.name || 'Unknown',
           matched: homeTeam ? true : false,
           dbTeam: homeTeam ? { id: homeTeam.id, name: homeTeam.name } : null
         },
         awayTeam: {
-          apiName: apiMatch.awayTeam.name,
+          apiName: apiMatch.awayTeam?.name || 'Unknown',
           matched: awayTeam ? true : false,
           dbTeam: awayTeam ? { id: awayTeam.id, name: awayTeam.name } : null
         },
