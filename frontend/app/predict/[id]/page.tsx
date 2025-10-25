@@ -317,7 +317,7 @@ function LeagueContent() {
   };
 
   const handleLeagueChange = (leagueId: string) => {
-    router.push(`/leagues/${leagueId}`);
+    router.push(`/predict/${leagueId}`);
   };
 
   const getTeamPosition = (teamId: number): number | null => {

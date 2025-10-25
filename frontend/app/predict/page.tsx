@@ -79,7 +79,7 @@ function PredictContent() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {leagues.map((league) => (
-                <Link key={league.id} href={`/leagues/${league.id}`}>
+                <Link key={league.id} href={`/predict/${league.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full hover:border-blue-500 dark:hover:border-blue-400">
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
