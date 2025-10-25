@@ -114,6 +114,9 @@ function LeagueContent() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
+  // All leagues for dropdown
+  const [allLeagues, setAllLeagues] = useState<League[]>([]);
+
   // Standings data
   const [standings, setStandings] = useState<Standing[]>([]);
 
@@ -149,6 +152,10 @@ function LeagueContent() {
 
   const fetchInitialData = async () => {
     try {
+      // Fetch all leagues for dropdown
+      const allLeaguesResponse = await api.get('/leagues');
+      setAllLeagues(allLeaguesResponse.data.data);
+
       // Fetch league details
       const leagueResponse = await api.get(`/leagues/${params.id}`);
       setLeague(leagueResponse.data.data);
@@ -309,6 +316,10 @@ function LeagueContent() {
     setSelectedGroup(group || null);
   };
 
+  const handleLeagueChange = (leagueId: string) => {
+    router.push(`/leagues/${leagueId}`);
+  };
+
   const getTeamPosition = (teamId: number): number | null => {
     const standing = standings.find(s => s.teamId === teamId);
     return standing ? standing.position : null;
@@ -383,14 +394,8 @@ function LeagueContent() {
     );
   }
 
-  // Filter matches based on selected group's allowed teams
-  const allMatches = currentGameWeek?.matches || [];
-  const matches = selectedGroup && selectedGroup.allowedTeamIds && selectedGroup.allowedTeamIds.length > 0
-    ? allMatches.filter(({ match }) =>
-        selectedGroup.allowedTeamIds.includes(match.homeTeam.id) ||
-        selectedGroup.allowedTeamIds.includes(match.awayTeam.id)
-      )
-    : allMatches;
+  // Get all matches from current gameweek
+  const matches = currentGameWeek?.matches || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -412,21 +417,25 @@ function LeagueContent() {
 
           {/* Selectors - Stack on mobile */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            {/* Group Selector */}
-            {userGroups.length > 0 && (
+            {/* League Selector */}
+            {allLeagues.length > 0 && (
               <div className="w-full sm:w-64">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Filter by Group
+                  Select League
                 </label>
-                <Select value={selectedGroupId?.toString() || 'all'} onValueChange={handleGroupChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All matches" />
+                <Select value={params.id as string} onValueChange={handleLeagueChange}>
+                  <SelectTrigger className="w-full bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Matches</SelectItem>
-                    {userGroups.map((group) => (
-                      <SelectItem key={group.id} value={group.id.toString()}>
-                        {group.name} {group.isPublic ? '(Public)' : '(Private)'}
+                    {allLeagues.map((lg) => (
+                      <SelectItem key={lg.id} value={lg.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          {lg.logoUrl && (
+                            <img src={lg.logoUrl} alt={lg.name} className="w-4 h-4 object-contain" />
+                          )}
+                          <span>{lg.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -436,50 +445,32 @@ function LeagueContent() {
 
             {/* GameWeek Selector */}
             {allGameWeeks.length > 0 && (
-              <div className="w-full sm:w-64">
+              <div className="w-full sm:w-80">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Select GameWeek
                 </label>
-                <select
-                  value={selectedGameWeekId || ''}
-                  onChange={(e) => handleGameWeekChange(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  {allGameWeeks.map((gw) => (
-                    <option key={gw.id} value={gw.id}>
-                      Week {gw.weekNumber} - {gw.status} ({gw._count.matches} matches)
-                    </option>
-                  ))}
-                </select>
+                <Select value={selectedGameWeekId?.toString() || ''} onValueChange={(value) => handleGameWeekChange(parseInt(value))}>
+                  <SelectTrigger className="w-full bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allGameWeeks.map((gw) => {
+                      // Map status values: IN_PROGRESS = Active, COMPLETED = Finished, SCHEDULED = Upcoming
+                      const status = gw.status.toUpperCase();
+                      const statusEmoji = status === 'SCHEDULED' ? '🔵' : status === 'IN_PROGRESS' ? '🟢' : '⚪';
+                      const statusText = status === 'SCHEDULED' ? 'Upcoming' : status === 'IN_PROGRESS' ? 'Active' : 'Finished';
+                      return (
+                        <SelectItem key={gw.id} value={gw.id.toString()}>
+                          Week {gw.weekNumber} {statusEmoji} {statusText}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
         </div>
-
-        {/* Group Filter Info */}
-        {selectedGroup && (
-          <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-purple-900 dark:text-purple-300">
-                  Filtering by: {selectedGroup.name}
-                </h3>
-                <p className="text-sm text-purple-800 dark:text-purple-400">
-                  {selectedGroup.allowedTeamIds && selectedGroup.allowedTeamIds.length > 0
-                    ? `Showing only matches with ${selectedGroup.allowedTeamIds.length} selected team(s)`
-                    : 'Showing all matches'}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleGroupChange('all')}
-              >
-                Clear Filter
-              </Button>
-            </div>
-          </div>
-        )}
 
         {currentGameWeek && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -489,10 +480,7 @@ function LeagueContent() {
                   GameWeek {currentGameWeek.weekNumber}
                 </h3>
                 <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-400">
-                  Status: <strong>{currentGameWeek.status}</strong> •
-                  {selectedGroup && selectedGroup.allowedTeamIds && selectedGroup.allowedTeamIds.length > 0
-                    ? ` ${matches.length} filtered matches`
-                    : ` ${currentGameWeek._count.matches} matches`}
+                  Status: <strong>{currentGameWeek.status}</strong> • {currentGameWeek._count.matches} matches
                 </p>
               </div>
               <div className="flex flex-row sm:flex-col gap-4 sm:gap-2 sm:text-right text-xs sm:text-sm">
