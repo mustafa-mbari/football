@@ -212,19 +212,42 @@ export const updateLeague = async (req: Request, res: Response) => {
       }
     }
 
+    // Prepare update data
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (code) updateData.code = code;
+    if (country !== undefined) updateData.country = country;
+    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (season) updateData.season = season;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (priority !== undefined) updateData.priority = parseInt(priority as any);
+
+    // Handle dates carefully
+    if (startDate) {
+      const parsedStartDate = new Date(startDate);
+      if (isNaN(parsedStartDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid start date format: "${startDate}". Please use YYYY-MM-DD format.`
+        });
+      }
+      updateData.startDate = parsedStartDate;
+    }
+
+    if (endDate) {
+      const parsedEndDate = new Date(endDate);
+      if (isNaN(parsedEndDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid end date format: "${endDate}". Please use YYYY-MM-DD format.`
+        });
+      }
+      updateData.endDate = parsedEndDate;
+    }
+
     const league = await prisma.league.update({
       where: { id: parseInt(id) },
-      data: {
-        ...(name && { name }),
-        ...(code && { code }),
-        ...(country !== undefined && { country }),
-        ...(logoUrl !== undefined && { logoUrl }),
-        ...(season && { season }),
-        ...(startDate && { startDate: new Date(startDate) }),
-        ...(endDate && { endDate: new Date(endDate) }),
-        ...(isActive !== undefined && { isActive }),
-        ...(priority !== undefined && { priority })
-      },
+      data: updateData,
       include: {
         _count: {
           select: { teams: true, matches: true }
@@ -260,6 +283,25 @@ export const updateLeague = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Invalid date format. Please use YYYY-MM-DD format.'
+      });
+    }
+
+    // Handle Prisma validation errors
+    if (error.name === 'PrismaClientValidationError') {
+      // Extract which field failed from the error message
+      const match = error.message.match(/Argument `(\w+)`:(.+?)Expected (.+?),/);
+      if (match) {
+        const fieldName = match[1];
+        const expectedType = match[3].trim();
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for field "${fieldName}". Expected ${expectedType.toLowerCase()}.`
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data provided. Please check all fields and try again.'
       });
     }
 
