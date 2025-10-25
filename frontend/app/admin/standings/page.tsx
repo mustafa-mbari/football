@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
+import LeagueSelector from '@/components/LeagueSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { standingsApi } from '@/lib/api';
@@ -12,7 +13,10 @@ import { standingsApi } from '@/lib/api';
 interface Team {
   id: number;
   name: string;
+  shortName?: string;
   code: string;
+  logoUrl?: string;
+  primaryColor?: string;
 }
 
 interface Standing {
@@ -29,6 +33,7 @@ interface Standing {
   goalDifference: number;
   points: number;
   form?: string;
+  nextOpponent?: Team | null;
 }
 
 interface League {
@@ -36,6 +41,7 @@ interface League {
   name: string;
   country: string;
   season: string;
+  logoUrl?: string;
 }
 
 interface LeagueStanding {
@@ -114,6 +120,19 @@ export default function UpdateStandingsPage() {
     return flags[country] || '⚽';
   };
 
+  const getFormIcon = (result: string) => {
+    switch (result) {
+      case 'W':
+        return <img src="/logos/form/W.svg" alt="Win" className="w-6 h-6" />;
+      case 'D':
+        return <img src="/logos/form/D.svg" alt="Draw" className="w-6 h-6" />;
+      case 'L':
+        return <img src="/logos/form/L.svg" alt="Loss" className="w-6 h-6" />;
+      default:
+        return null;
+    }
+  };
+
   if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
     return null;
   }
@@ -139,19 +158,16 @@ export default function UpdateStandingsPage() {
             No standings data available. Please ensure the database is seeded.
           </div>
         ) : (
-          <Tabs value={selectedLeague} onValueChange={setSelectedLeague} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              {standingsData.map((leagueData) => (
-                <TabsTrigger key={leagueData.league.id} value={leagueData.league.id.toString()}>
-                  <span className="mr-2">{getLeagueFlag(leagueData.league.country)}</span>
-                  {leagueData.league.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <>
+            <LeagueSelector
+              leagues={standingsData.map(sd => sd.league)}
+              selectedLeagueId={selectedLeague}
+              onLeagueChange={setSelectedLeague}
+            />
 
             {standingsData.map((leagueData) => (
-              <TabsContent key={leagueData.league.id} value={leagueData.league.id.toString()}>
-                <Card>
+              selectedLeague === leagueData.league.id.toString() && (
+                <Card key={leagueData.league.id}>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>{leagueData.league.name} - {leagueData.league.season}</span>
@@ -161,11 +177,17 @@ export default function UpdateStandingsPage() {
                           disabled={recalculating}
                           variant="outline"
                           size="sm"
-                          className="border-green-500 text-green-600 hover:bg-green-50"
+                          className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
                         >
                           {recalculating ? 'Recalculating...' : '🔄 Recalculate Tables'}
                         </Button>
-                        <span className="text-3xl">{getLeagueFlag(leagueData.league.country)}</span>
+                        {leagueData.league.logoUrl && (
+                          <img
+                            src={leagueData.league.logoUrl}
+                            alt={leagueData.league.name}
+                            className="w-12 h-12 object-contain"
+                          />
+                        )}
                       </div>
                     </CardTitle>
                   </CardHeader>
@@ -184,6 +206,8 @@ export default function UpdateStandingsPage() {
                             <th className="py-3 px-2 text-center font-semibold">GA</th>
                             <th className="py-3 px-2 text-center font-semibold">GD</th>
                             <th className="py-3 px-2 text-center font-semibold">Pts</th>
+                            <th className="py-3 px-2 text-center font-semibold">Next</th>
+                            <th className="py-3 px-4 text-center font-semibold">Form</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -210,7 +234,16 @@ export default function UpdateStandingsPage() {
                                 </div>
                               </td>
                               <td className="py-3 px-4">
-                                <span className="font-medium">{standing.team.name}</span>
+                                <div className="flex items-center gap-3">
+                                  {standing.team.logoUrl && (
+                                    <img
+                                      src={standing.team.logoUrl}
+                                      alt={standing.team.name}
+                                      className="w-6 h-6 object-contain"
+                                    />
+                                  )}
+                                  <span className="font-medium">{standing.team.name}</span>
+                                </div>
                               </td>
                               <td className="py-3 px-2 text-center">{standing.played}</td>
                               <td className="py-3 px-2 text-center">{standing.won}</td>
@@ -233,6 +266,29 @@ export default function UpdateStandingsPage() {
                                 </span>
                               </td>
                               <td className="py-3 px-2 text-center font-bold">{standing.points}</td>
+                              <td className="py-3 px-2 text-center">
+                                {standing.nextOpponent ? (
+                                  <div className="flex justify-center">
+                                    <img
+                                      src={standing.nextOpponent.logoUrl}
+                                      alt={standing.nextOpponent.name}
+                                      className="w-5 h-5 object-contain"
+                                      title={standing.nextOpponent.name}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                {standing.form && (
+                                  <div className="flex gap-1 justify-center">
+                                    {standing.form.split('').slice(-5).map((result, i) => (
+                                      <div key={i}>{getFormIcon(result)}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -258,9 +314,9 @@ export default function UpdateStandingsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
+              )
             ))}
-          </Tabs>
+          </>
         )}
     </main>
   );

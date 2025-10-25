@@ -72,58 +72,59 @@ export default function LeagueSelector({
     );
   }
 
-  // More than 3 leagues: show first 3 as tabs + dropdown
+  // More than 3 leagues: show first 3 as tabs + dropdown inside TabsList
   return (
-    <div className={`flex flex-col sm:flex-row gap-4 mb-8 ${className}`}>
-      <Tabs
-        value={isSelectedInDropdown ? '' : selectedLeagueId}
-        onValueChange={onLeagueChange}
-        className="flex-1"
-      >
-        <TabsList className="grid w-full grid-cols-3">
-          {visibleLeagues.map((league) => (
-            <TabsTrigger key={league.id} value={league.id.toString()}>
-              <span className="mr-2">{getLeagueLogo(league)}</span>
-              <span className="hidden sm:inline">{league.name}</span>
-              <span className="sm:hidden">{league.name.substring(0, 3)}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+    <Tabs
+      value={isSelectedInDropdown ? '' : selectedLeagueId}
+      onValueChange={onLeagueChange}
+      className={`mb-8 ${className}`}
+    >
+      <TabsList className="grid w-full gap-1.5" style={{ gridTemplateColumns: `repeat(3, 1fr) auto` }}>
+        {visibleLeagues.map((league) => (
+          <TabsTrigger key={league.id} value={league.id.toString()}>
+            <span className="mr-2">{getLeagueLogo(league)}</span>
+            <span className="hidden sm:inline">{league.name}</span>
+            <span className="sm:hidden">{league.name.substring(0, 3)}</span>
+          </TabsTrigger>
+        ))}
 
-      {dropdownLeagues.length > 0 && (
-        <div className="w-full sm:w-64">
-          <Select
-            value={isSelectedInDropdown ? selectedLeagueId : ''}
-            onValueChange={onLeagueChange}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="More leagues...">
-                {isSelectedInDropdown && (
-                  <div className="flex items-center gap-2">
-                    {getLeagueLogo(
-                      dropdownLeagues.find((l) => l.id.toString() === selectedLeagueId)!
-                    )}
-                    <span>
-                      {dropdownLeagues.find((l) => l.id.toString() === selectedLeagueId)?.name}
-                    </span>
-                  </div>
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {dropdownLeagues.map((league) => (
-                <SelectItem key={league.id} value={league.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    {getLeagueLogo(league)}
-                    <span>{league.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-    </div>
+        {dropdownLeagues.length > 0 && (
+          <div className="flex items-center px-1">
+            <Select
+              value={isSelectedInDropdown ? selectedLeagueId : ''}
+              onValueChange={onLeagueChange}
+            >
+              <SelectTrigger className="h-full min-w-[140px] sm:min-w-[180px] border-0 bg-transparent hover:bg-white/50 dark:hover:bg-slate-950/50 data-[state=open]:bg-white dark:data-[state=open]:bg-slate-950">
+                <SelectValue placeholder="More leagues...">
+                  {isSelectedInDropdown && (
+                    <div className="flex items-center gap-2">
+                      {getLeagueLogo(
+                        dropdownLeagues.find((l) => l.id.toString() === selectedLeagueId)!
+                      )}
+                      <span className="hidden sm:inline">
+                        {dropdownLeagues.find((l) => l.id.toString() === selectedLeagueId)?.name}
+                      </span>
+                      <span className="sm:hidden">
+                        {dropdownLeagues.find((l) => l.id.toString() === selectedLeagueId)?.name.substring(0, 3)}
+                      </span>
+                    </div>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {dropdownLeagues.map((league) => (
+                  <SelectItem key={league.id} value={league.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      {getLeagueLogo(league)}
+                      <span>{league.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </TabsList>
+    </Tabs>
   );
 }
