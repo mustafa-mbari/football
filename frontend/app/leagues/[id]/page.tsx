@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api, settingsApi, groupsApi } from '@/lib/api';
+import { api, settingsApi, groupsApi, standingsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -80,6 +80,22 @@ interface Group {
   };
 }
 
+interface Standing {
+  id: number;
+  position: number;
+  teamId: number;
+  team: Team;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  form?: string;
+}
+
 function LeagueContent() {
   const params = useParams();
   const router = useRouter();
@@ -97,6 +113,9 @@ function LeagueContent() {
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+  // Standings data
+  const [standings, setStandings] = useState<Standing[]>([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -162,6 +181,14 @@ function LeagueContent() {
       // Fetch all gameweeks for selector
       const allGameWeeksResponse = await api.get(`/gameweeks/league/${params.id}`);
       setAllGameWeeks(allGameWeeksResponse.data.data);
+
+      // Fetch standings for position badges
+      try {
+        const standingsResponse = await standingsApi.getByLeague(parseInt(params.id as string));
+        setStandings(standingsResponse.data.data || []);
+      } catch (error) {
+        console.log('Error fetching standings:', error);
+      }
     } catch (error) {
       console.error('Error fetching initial data:', error);
     } finally {
@@ -282,14 +309,56 @@ function LeagueContent() {
     setSelectedGroup(group || null);
   };
 
+  const getTeamPosition = (teamId: number): number | null => {
+    const standing = standings.find(s => s.teamId === teamId);
+    return standing ? standing.position : null;
+  };
+
+  const getPositionBadgeColor = (position: number, leagueId: number): string => {
+    // Champions League (ID 5): 1-8 green, 9-24 gray, 25-36 red
+    if (leagueId === 5) {
+      if (position >= 1 && position <= 8) return 'bg-green-500';
+      if (position >= 9 && position <= 24) return 'bg-gray-400';
+      if (position >= 25 && position <= 36) return 'bg-red-500';
+    }
+
+    // Premier League (ID 1), La Liga (ID 2), Serie A (ID 4): 1-4 green, 5-17 gray, 18-20 red
+    if (leagueId === 1 || leagueId === 2 || leagueId === 4) {
+      if (position >= 1 && position <= 4) return 'bg-green-500';
+      if (position >= 5 && position <= 17) return 'bg-gray-400';
+      if (position >= 18 && position <= 20) return 'bg-red-500';
+    }
+
+    // Bundesliga (ID 3): 1-4 green, 5-15 gray, 16-18 red
+    if (leagueId === 3) {
+      if (position >= 1 && position <= 4) return 'bg-green-500';
+      if (position >= 5 && position <= 15) return 'bg-gray-400';
+      if (position >= 16 && position <= 18) return 'bg-red-500';
+    }
+
+    // Default fallback
+    return 'bg-yellow-400';
+  };
+
   const getTeamLogo = (team: Team) => {
     if (team.logoUrl) {
+      const position = getTeamPosition(team.id);
+      const badgeColor = position !== null && league ? getPositionBadgeColor(position, league.id) : 'bg-yellow-400';
       return (
-        <img
-          src={team.logoUrl}
-          alt={team.name}
-          className="w-12 h-12 sm:w-14 sm:h-14 object-contain transition-transform duration-200 hover:scale-110"
-        />
+        <div className="relative inline-block">
+          <img
+            src={team.logoUrl}
+            alt={team.name}
+            className="w-12 h-12 sm:w-14 sm:h-14 object-contain transition-transform duration-200 hover:scale-110"
+          />
+          {position !== null && (
+            <div className={`absolute -top-1 -right-1 w-5 h-5 ${badgeColor} border-2 border-white dark:border-slate-800 rounded-full flex items-center justify-center shadow-lg z-10`}>
+              <span className="text-[10px] font-bold text-white">
+                {position}
+              </span>
+            </div>
+          )}
+        </div>
       );
     }
     return null;
