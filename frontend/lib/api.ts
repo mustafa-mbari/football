@@ -242,3 +242,17 @@ export const exportApi = {
   getAvailableTables: () => api.get('/export/tables'),
   exportData: (tables: string[]) => api.post('/export/export', { tables })
 };
+
+// Points Rules API
+export const pointsRulesApi = {
+  getAll: (activeOnly = false) =>
+    api.get(`/points-rules${activeOnly ? '?active=true' : ''}`),
+  getById: (id: number) => api.get(`/points-rules/${id}`),
+  update: (id: number, data: {
+    name?: string;
+    description?: string;
+    points?: number;
+    isActive?: boolean;
+    priority?: number;
+  }) => api.put(`/points-rules/${id}`, data)
+};

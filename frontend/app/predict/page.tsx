@@ -131,7 +131,7 @@ function PredictContent() {
                   <CardTitle className="text-lg">🏆 Earn Points</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-slate-700 dark:text-slate-300">
-                  Get 3 points for exact scores, 1 point for correct outcomes
+                  Earn up to 10 points per match for accurate predictions
                 </CardContent>
               </Card>
             </div>

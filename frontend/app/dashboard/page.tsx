@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { leaderboardApi, predictionsApi, groupsApi, leaguesApi, matchesApi } from '@/lib/api';
+import { leaderboardApi, predictionsApi, groupsApi, leaguesApi, matchesApi, pointsRulesApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -18,6 +18,16 @@ interface UserStats {
   exactScores: number;
   correctOutcomes: number;
   averagePoints: string;
+}
+
+interface PointsRule {
+  id: number;
+  name: string;
+  description: string;
+  points: number;
+  type: string;
+  priority: number;
+  isActive: boolean;
 }
 
 interface Prediction {
@@ -110,6 +120,7 @@ function DashboardContent() {
   const [privateLeaderboard, setPrivateLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [pointsRules, setPointsRules] = useState<PointsRule[]>([]);
 
   // Fetch initial data
   useEffect(() => {
@@ -169,6 +180,20 @@ function DashboardContent() {
     };
 
     fetchData();
+  }, []);
+
+  // Fetch points rules
+  useEffect(() => {
+    const fetchPointsRules = async () => {
+      try {
+        const response = await pointsRulesApi.getAll(true); // Get only active rules
+        setPointsRules(response.data.data);
+      } catch (error) {
+        console.error('Error fetching points rules:', error);
+      }
+    };
+
+    fetchPointsRules();
   }, []);
 
   // Fetch public group leaderboard when league changes
@@ -885,70 +910,86 @@ function DashboardContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Exact Score */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">🏆</span>
-                  <h4 className="font-bold text-green-700 dark:text-green-400">Exact Score</h4>
-                </div>
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">9 pts</div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  1 pt (home) + 1 pt (away) + 2 pts (total goals) + 3 pts (result) + 3 pts (bonus)
-                </p>
-              </div>
+            {pointsRules.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {/* Maximum Points Card */}
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">🏆</span>
+                      <h4 className="font-bold text-green-700 dark:text-green-400">Maximum Points</h4>
+                    </div>
+                    <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
+                      {pointsRules.reduce((sum, rule) => sum + rule.points, 0)} pts
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Perfect prediction with all criteria met
+                    </p>
+                  </div>
 
-              {/* Correct Result + Partial */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-yellow-200 dark:border-yellow-800 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">✓</span>
-                  <h4 className="font-bold text-yellow-700 dark:text-yellow-400">Partial Match</h4>
-                </div>
-                <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">3-6 pts</div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Points for correct result (3), total goals (2), or exact team scores (1 each)
-                </p>
-              </div>
+                  {/* Partial Match Card */}
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-yellow-200 dark:border-yellow-800 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">✓</span>
+                      <h4 className="font-bold text-yellow-700 dark:text-yellow-400">Partial Match</h4>
+                    </div>
+                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
+                      {pointsRules.filter(r => r.type !== 'EXACT_SCORE_BONUS').reduce((sum, rule) => sum + rule.points, 0)} pts
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Points without exact score bonus
+                    </p>
+                  </div>
 
-              {/* No Match */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">✗</span>
-                  <h4 className="font-bold text-red-700 dark:text-red-400">No Match</h4>
+                  {/* No Match Card */}
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">✗</span>
+                      <h4 className="font-bold text-red-700 dark:text-red-400">No Match</h4>
+                    </div>
+                    <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">0 pts</div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Incorrect prediction with no matching elements
+                    </p>
+                  </div>
                 </div>
-                <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">0 pts</div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Incorrect prediction with no matching elements
-                </p>
-              </div>
-            </div>
 
-            {/* Detailed Breakdown */}
-            <div className="mt-6 pt-6 border-t border-indigo-200 dark:border-indigo-800">
-              <h5 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-3 text-sm">Point Breakdown:</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold">1</span>
-                  Exact home team score
+                {/* Detailed Rules Breakdown */}
+                <div className="pt-6 border-t border-indigo-200 dark:border-indigo-800">
+                  <h5 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-3 text-sm">Point Breakdown:</h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {pointsRules.map((rule) => {
+                      const colors = [
+                        { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300' },
+                        { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-700 dark:text-purple-300' },
+                        { bg: 'bg-indigo-100 dark:bg-indigo-900', text: 'text-indigo-700 dark:text-indigo-300' },
+                        { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
+                        { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300' },
+                        { bg: 'bg-pink-100 dark:bg-pink-900', text: 'text-pink-700 dark:text-pink-300' },
+                      ];
+                      const colorIndex = (rule.priority - 1) % colors.length;
+                      const color = colors[colorIndex];
+
+                      return (
+                        <div key={rule.id} className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
+                          <span className={`min-w-6 w-6 h-6 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-xs font-bold`}>
+                            {rule.points}
+                          </span>
+                          <div className="flex-1">
+                            <div className="font-medium">{rule.name}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">{rule.description}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-bold">1</span>
-                  Exact away team score
-                </div>
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs font-bold">2</span>
-                  Correct total goals
-                </div>
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-bold">3</span>
-                  Correct match result
-                </div>
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 flex items-center justify-center text-xs font-bold">3</span>
-                  Exact score bonus
-                </div>
+              </>
+            ) : (
+              <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                Loading points rules...
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </main>

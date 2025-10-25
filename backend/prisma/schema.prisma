@@ -617,11 +617,12 @@ enum PredictionStatus {
 
 enum PointsType {
   // New Core Rules (Active)
-  EXACT_HOME_SCORE      // 1 point for exact home team score
-  EXACT_AWAY_SCORE      // 1 point for exact away team score
-  CORRECT_RESULT        // 2 points for correct outcome (win/draw/loss)
-  CORRECT_TOTAL_GOALS   // 2 points for correct total goals sum
-  EXACT_SCORE_BONUS     // 3 bonus points for exact score
+  EXACT_HOME_SCORE         // 1 point for exact home team score
+  EXACT_AWAY_SCORE         // 1 point for exact away team score
+  CORRECT_RESULT           // 2 points for correct outcome (win/draw/loss)
+  CORRECT_TOTAL_GOALS      // 2 points for correct total goals sum
+  CORRECT_GOAL_DIFFERENCE  // 1 point for correct goal difference
+  EXACT_SCORE_BONUS        // 3 bonus points for exact score
 
   // Legacy Rules (Deprecated - kept for historical data)
   EXACT_SCORE           // Full points for exact score

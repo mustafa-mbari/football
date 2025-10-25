@@ -5,13 +5,13 @@
 
 import { PointsCalculator } from './PointsCalculator';
 
-export const calculatePoints = (
+export const calculatePoints = async (
   predictedHome: number,
   predictedAway: number,
   actualHome: number,
   actualAway: number
-): number => {
-  return PointsCalculator.calculateTotalPoints({
+): Promise<number> => {
+  return await PointsCalculator.calculateTotalPoints({
     predictedHomeScore: predictedHome,
     predictedAwayScore: predictedAway,
     actualHomeScore: actualHome,

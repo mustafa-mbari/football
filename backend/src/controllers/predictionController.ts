@@ -226,7 +226,7 @@ export const updateMatchScore = async (req: Request, res: Response) => {
 
     // Update points for each prediction and update group points
     for (const prediction of predictions) {
-      const points = calculatePoints(
+      const points = await calculatePoints(
         prediction.predictedHomeScore,
         prediction.predictedAwayScore,
         homeScore,
@@ -267,16 +267,36 @@ export const updateMatchScore = async (req: Request, res: Response) => {
 // Admin endpoint to recalculate all prediction points
 export const recalculateAllPoints = async (req: Request, res: Response) => {
   try {
-    // Get all matches that have scores
+    const { leagueId, gameWeekId } = req.body;
+
+    // Build match filter based on provided parameters
+    const matchFilter: any = {
+      AND: [
+        { homeScore: { not: null } },
+        { awayScore: { not: null } }
+      ]
+    };
+
+    // Add league filter if provided
+    if (leagueId) {
+      matchFilter.leagueId = parseInt(leagueId);
+    }
+
+    // Add gameweek filter if provided
+    if (gameWeekId) {
+      matchFilter.gameWeekMatches = {
+        some: {
+          gameWeekId: parseInt(gameWeekId)
+        }
+      };
+    }
+
+    // Get all matches that match the filters
     const matches = await prisma.match.findMany({
-      where: {
-        AND: [
-          { homeScore: { not: null } },
-          { awayScore: { not: null } }
-        ]
-      },
+      where: matchFilter,
       include: {
-        predictions: true
+        predictions: true,
+        league: true
       }
     });
 
@@ -289,7 +309,7 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
       for (const prediction of match.predictions) {
         totalPredictions++;
 
-        const points = calculatePoints(
+        const points = await calculatePoints(
           prediction.predictedHomeScore,
           prediction.predictedAwayScore,
           match.homeScore!,
@@ -306,13 +326,25 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
       }
     }
 
+    // Build response message
+    let filterDescription = 'all';
+    if (leagueId && gameWeekId) {
+      filterDescription = `league ${leagueId}, gameweek ${gameWeekId}`;
+    } else if (leagueId) {
+      filterDescription = `league ${leagueId}`;
+    } else if (gameWeekId) {
+      filterDescription = `gameweek ${gameWeekId}`;
+    }
+
     res.json({
       success: true,
-      message: `Successfully recalculated points for ${updatedPredictions} predictions`,
+      message: `Successfully recalculated points for ${updatedPredictions} predictions (filter: ${filterDescription})`,
       stats: {
+        totalMatches: matches.length,
         totalPredictions,
         updatedPredictions,
-        totalPointsAwarded
+        totalPointsAwarded,
+        averagePoints: totalPredictions > 0 ? (totalPointsAwarded / totalPredictions).toFixed(2) : 0
       }
     });
   } catch (error: any) {

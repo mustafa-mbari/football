@@ -3,7 +3,12 @@ import prisma from '../config/database';
 
 export const getAllPointsRules = async (req: Request, res: Response) => {
   try {
+    const { active } = req.query;
+
+    const whereClause = active === 'true' ? { isActive: true } : {};
+
     const rules = await prisma.pointsRule.findMany({
+      where: whereClause,
       orderBy: {
         priority: 'asc'
       }

@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { settingsApi, api, exportApi } from '@/lib/api';
+import { settingsApi, api, exportApi, leaguesApi, gameWeeksApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -26,10 +27,26 @@ interface RecalculationResult {
   success: boolean;
   message: string;
   stats?: {
+    totalMatches: number;
     totalPredictions: number;
     updatedPredictions: number;
     totalPointsAwarded: number;
+    averagePoints: string;
   };
+}
+
+interface League {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface GameWeek {
+  id: number;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  leagueId: number;
 }
 
 interface ExportableTable {
@@ -61,6 +78,12 @@ export default function SettingsPage() {
   const [recalcResult, setRecalcResult] = useState<RecalculationResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Recalculation filters
+  const [leagues, setLeagues] = useState<League[]>([]);
+  const [gameWeeks, setGameWeeks] = useState<GameWeek[]>([]);
+  const [selectedLeague, setSelectedLeague] = useState<string>('all');
+  const [selectedGameWeek, setSelectedGameWeek] = useState<string>('all');
+
   // Export state
   const [availableTables, setAvailableTables] = useState<ExportableTable[]>([]);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -91,6 +114,26 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.log('Points rules endpoint not available');
+      }
+
+      // Fetch leagues
+      try {
+        const leaguesResponse = await leaguesApi.getAll();
+        if (leaguesResponse.data.success) {
+          setLeagues(leaguesResponse.data.data);
+        }
+      } catch (error) {
+        console.log('Leagues endpoint not available');
+      }
+
+      // Fetch gameweeks
+      try {
+        const gameWeeksResponse = await gameWeeksApi.getAll();
+        if (gameWeeksResponse.data.success) {
+          setGameWeeks(gameWeeksResponse.data.data);
+        }
+      } catch (error) {
+        console.log('GameWeeks endpoint not available');
       }
 
       // Fetch available tables for export
@@ -131,7 +174,21 @@ export default function SettingsPage() {
   };
 
   const handleRecalculatePoints = async () => {
-    if (!confirm('This will recalculate points for all predictions. Are you sure?')) {
+    // Build confirmation message
+    let scope = 'all predictions';
+    if (selectedLeague !== 'all' && selectedGameWeek !== 'all') {
+      const league = leagues.find(l => l.id === parseInt(selectedLeague));
+      const gameWeek = gameWeeks.find(gw => gw.id === parseInt(selectedGameWeek));
+      scope = `predictions for ${league?.name} - Gameweek ${gameWeek?.weekNumber}`;
+    } else if (selectedLeague !== 'all') {
+      const league = leagues.find(l => l.id === parseInt(selectedLeague));
+      scope = `all predictions for ${league?.name}`;
+    } else if (selectedGameWeek !== 'all') {
+      const gameWeek = gameWeeks.find(gw => gw.id === parseInt(selectedGameWeek));
+      scope = `all predictions for Gameweek ${gameWeek?.weekNumber}`;
+    }
+
+    if (!confirm(`This will recalculate ${scope}. Are you sure?`)) {
       return;
     }
 
@@ -139,7 +196,15 @@ export default function SettingsPage() {
     setRecalcResult(null);
 
     try {
-      const response = await api.post('/predictions/recalculate-all-points');
+      const payload: any = {};
+      if (selectedLeague !== 'all') {
+        payload.leagueId = selectedLeague;
+      }
+      if (selectedGameWeek !== 'all') {
+        payload.gameWeekId = selectedGameWeek;
+      }
+
+      const response = await api.post('/predictions/recalculate-all-points', payload);
       setRecalcResult(response.data);
       showMessage('success', 'Points recalculated successfully!');
     } catch (error: any) {
@@ -282,20 +347,64 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Points Recalculation Card */}
+          {/* Points Recalculation Card - Enhanced */}
           <Card>
             <CardHeader>
               <CardTitle>Points Recalculation</CardTitle>
               <CardDescription>
-                Recalculate points for all predictions based on current rules
+                Recalculate points for predictions with optional league and gameweek filters
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Filter Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="league-filter">League Filter</Label>
+                  <Select value={selectedLeague} onValueChange={setSelectedLeague}>
+                    <SelectTrigger id="league-filter">
+                      <SelectValue placeholder="Select league" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Leagues</SelectItem>
+                      {leagues.map((league) => (
+                        <SelectItem key={league.id} value={league.id.toString()}>
+                          {league.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gameweek-filter">Gameweek Filter</Label>
+                  <Select value={selectedGameWeek} onValueChange={setSelectedGameWeek}>
+                    <SelectTrigger id="gameweek-filter">
+                      <SelectValue placeholder="Select gameweek" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Gameweeks</SelectItem>
+                      {gameWeeks
+                        .filter(gw => selectedLeague === 'all' || gw.leagueId === parseInt(selectedLeague))
+                        .sort((a, b) => a.weekNumber - b.weekNumber)
+                        .map((gameWeek) => {
+                          const league = leagues.find(l => l.id === gameWeek.leagueId);
+                          return (
+                            <SelectItem key={gameWeek.id} value={gameWeek.id.toString()}>
+                              {league?.name} - Week {gameWeek.weekNumber}
+                            </SelectItem>
+                          );
+                        })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
                 <h4 className="font-semibold text-yellow-900 dark:text-yellow-300 mb-2">⚠️ Important:</h4>
                 <ul className="text-sm text-yellow-800 dark:text-yellow-400 space-y-1">
-                  <li>• This will recalculate ALL predictions</li>
-                  <li>• Points will be updated based on current scoring rules</li>
+                  <li>• This will recalculate points based on current scoring rules</li>
+                  <li>• Use filters to recalculate specific league or gameweek only</li>
+                  <li>• Group points will be automatically updated</li>
                   <li>• This process may take a few moments</li>
                   <li>• Only do this after updating points rules or fixing scores</li>
                 </ul>
@@ -307,7 +416,7 @@ export default function SettingsPage() {
                 variant="destructive"
                 className="w-full"
               >
-                {recalculating ? 'Recalculating...' : 'Recalculate All Points'}
+                {recalculating ? 'Recalculating...' : 'Recalculate Points'}
               </Button>
 
               {recalcResult && (
@@ -332,9 +441,11 @@ export default function SettingsPage() {
                   </p>
                   {recalcResult.stats && (
                     <div className="text-sm text-green-800 dark:text-green-400 space-y-1">
+                      <p>• Matches Processed: {recalcResult.stats.totalMatches}</p>
                       <p>• Total Predictions: {recalcResult.stats.totalPredictions}</p>
                       <p>• Updated: {recalcResult.stats.updatedPredictions}</p>
                       <p>• Total Points Awarded: {recalcResult.stats.totalPointsAwarded}</p>
+                      <p>• Average Points: {recalcResult.stats.averagePoints}</p>
                     </div>
                   )}
                 </div>

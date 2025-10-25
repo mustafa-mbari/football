@@ -244,7 +244,7 @@ export default function LandingPage() {
               <CardTitle className="text-center">🏆 Compete & Win</CardTitle>
             </CardHeader>
             <CardContent className="text-center text-slate-600 dark:text-slate-400">
-              Climb the leaderboard by earning points. Get 3 points for exact scores, 1 for correct outcomes
+              Climb the leaderboard by earning points. Earn up to 10 points per match for accurate predictions!
             </CardContent>
           </Card>
           <Card>
