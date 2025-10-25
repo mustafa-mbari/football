@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import LeagueSelector from '@/components/LeagueSelector';
+import AddGameWeeksModal from '@/components/admin/AddGameWeeksModal';
 
 interface League {
   id: number;
@@ -40,6 +41,7 @@ function GameWeeksContent() {
   const [selectedLeague, setSelectedLeague] = useState<string>('');
   const [leagues, setLeagues] = useState<League[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
@@ -198,6 +200,13 @@ function GameWeeksContent() {
                       <span>{league.name} - {league.season}</span>
                       <div className="flex items-center gap-4">
                         <Button
+                          onClick={() => setIsAddModalOpen(true)}
+                          size="sm"
+                          variant="default"
+                        >
+                          + Add GameWeek(s)
+                        </Button>
+                        <Button
                           onClick={() => handleSyncMatches(league.id)}
                           disabled={syncing}
                           size="sm"
@@ -276,6 +285,16 @@ function GameWeeksContent() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Add GameWeeks Modal */}
+        {selectedLeague && (
+          <AddGameWeeksModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            leagueId={parseInt(selectedLeague)}
+            onSuccess={fetchGameWeeks}
+          />
         )}
     </main>
   );

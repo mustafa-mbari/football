@@ -846,6 +846,99 @@ export const createMatchForGameWeek = async (req: Request, res: Response) => {
   }
 };
 
+// Create single or multiple gameweeks (Admin only)
+export const createGameWeeks = async (req: Request, res: Response) => {
+  try {
+    const { leagueId, gameweeks } = req.body;
+
+    if (!leagueId || !gameweeks || !Array.isArray(gameweeks) || gameweeks.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'leagueId and gameweeks array are required'
+      });
+    }
+
+    // Validate league exists
+    const league = await prisma.league.findUnique({
+      where: { id: parseInt(leagueId) }
+    });
+
+    if (!league) {
+      return res.status(404).json({
+        success: false,
+        message: 'League not found'
+      });
+    }
+
+    // Validate each gameweek data
+    const errors: string[] = [];
+    for (let i = 0; i < gameweeks.length; i++) {
+      const gw = gameweeks[i];
+      if (!gw.weekNumber) {
+        errors.push(`Gameweek ${i + 1}: weekNumber is required`);
+      }
+
+      // Check if week number already exists
+      const existing = await prisma.gameWeek.findUnique({
+        where: {
+          leagueId_weekNumber: {
+            leagueId: parseInt(leagueId),
+            weekNumber: parseInt(gw.weekNumber)
+          }
+        }
+      });
+
+      if (existing) {
+        errors.push(`Week ${gw.weekNumber} already exists for this league`);
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors
+      });
+    }
+
+    // Create all gameweeks
+    const createdGameWeeks = await Promise.all(
+      gameweeks.map((gw: any) =>
+        prisma.gameWeek.create({
+          data: {
+            leagueId: parseInt(leagueId),
+            weekNumber: parseInt(gw.weekNumber),
+            startDate: gw.startDate ? new Date(gw.startDate) : new Date(),
+            endDate: gw.endDate ? new Date(gw.endDate) : new Date(),
+            status: gw.status || 'SCHEDULED',
+            isCurrent: false
+          },
+          include: {
+            league: {
+              select: { id: true, name: true, country: true, season: true, logoUrl: true }
+            },
+            _count: {
+              select: { matches: true, teamStats: true }
+            }
+          }
+        })
+      )
+    );
+
+    res.json({
+      success: true,
+      data: createdGameWeeks,
+      message: `Successfully created ${createdGameWeeks.length} gameweek(s)`
+    });
+  } catch (error: any) {
+    console.error('Create gameweeks error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Get all gameweeks across all leagues
 export const getAllGameWeeks = async (req: Request, res: Response) => {
   try {
