@@ -319,7 +319,11 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
 
         await prisma.prediction.update({
           where: { id: prediction.id },
-          data: { totalPoints: points }
+          data: {
+            totalPoints: points,
+            isProcessed: match.status === 'FINISHED',
+            status: match.status === 'FINISHED' ? 'COMPLETED' : prediction.status
+          }
         });
 
         updatedPredictions++;
@@ -337,9 +341,14 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
       filterDescription = `gameweek ${gameWeekId}`;
     }
 
+    // After recalculating prediction points, update group points
+    console.log('🔄 Recalculating group points after prediction update...');
+    const { pointsUpdateService } = await import('../services/pointsUpdateService');
+    await pointsUpdateService.recalculateAllGroupPoints();
+
     res.json({
       success: true,
-      message: `Successfully recalculated points for ${updatedPredictions} predictions (filter: ${filterDescription})`,
+      message: `Successfully recalculated points for ${updatedPredictions} predictions (filter: ${filterDescription}) and updated all group standings`,
       stats: {
         totalMatches: matches.length,
         totalPredictions,

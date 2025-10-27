@@ -210,6 +210,9 @@ export class PointsUpdateService {
 
       console.log(`Recalculating points for ${group.members.length} members in group ${group.name}`);
 
+      // First, fix any unprocessed predictions with points
+      await this.fixUnprocessedPredictions(groupId);
+
       for (const member of group.members) {
         await this.recalculateUserGroupPoints(member.userId, groupId);
       }
@@ -222,12 +225,76 @@ export class PointsUpdateService {
   }
 
   /**
+   * Fix unprocessed predictions that have points
+   * This ensures predictions with scores are marked as processed
+   */
+  private async fixUnprocessedPredictions(groupId: number): Promise<void> {
+    try {
+      const group = await prisma.group.findUnique({
+        where: { id: groupId }
+      });
+
+      if (!group) {
+        return;
+      }
+
+      // Build where clause for this group's predictions
+      const whereClause: any = {
+        isProcessed: false,
+        match: {
+          status: 'FINISHED'
+        }
+      };
+
+      // Filter by league if group is league-specific
+      if (group.leagueId) {
+        whereClause.match.leagueId = group.leagueId;
+      }
+
+      // Update all unprocessed predictions for finished matches
+      const result = await prisma.prediction.updateMany({
+        where: whereClause,
+        data: {
+          isProcessed: true,
+          status: 'COMPLETED'
+        }
+      });
+
+      if (result.count > 0) {
+        console.log(`  Fixed ${result.count} unprocessed predictions for group ${group.name}`);
+      }
+    } catch (error) {
+      console.error('Error fixing unprocessed predictions:', error);
+      // Don't throw - continue with recalculation
+    }
+  }
+
+  /**
    * Recalculate points for all groups and all users
    * Use this after major changes or data migrations
    */
   async recalculateAllGroupPoints(): Promise<void> {
     try {
       console.log('Starting full group points recalculation...');
+
+      // First, fix ALL unprocessed predictions globally
+      console.log('\n🔄 Fixing unprocessed predictions for all leagues...');
+      const fixResult = await prisma.prediction.updateMany({
+        where: {
+          isProcessed: false,
+          match: {
+            status: 'FINISHED'
+          }
+        },
+        data: {
+          isProcessed: true,
+          status: 'COMPLETED'
+        }
+      });
+
+      if (fixResult.count > 0) {
+        console.log(`✅ Fixed ${fixResult.count} unprocessed predictions globally\n`);
+      }
 
       const groups = await prisma.group.findMany({
         include: {
