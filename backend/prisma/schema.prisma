@@ -412,6 +412,11 @@ model GroupMember {
   pointsByLeague  Json      @default("{}")  // {"1": 30, "2": 20, "3": 15, "4": 10}
   totalPoints     Int       @default(0)     // Sum of all league points or filtered points
 
+  // Gameweek-specific points tracking
+  // Format: {"leagueId": {"weekNumber": points}}
+  // Example: {"1": {"1": 5, "2": 8, "3": 3}, "2": {"1": 10, "2": 0}}
+  pointsByGameweek Json     @default("{}")
+
   joinedAt        DateTime  @default(now())
   lastUpdated     DateTime  @updatedAt
 

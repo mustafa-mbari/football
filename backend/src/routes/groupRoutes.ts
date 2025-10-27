@@ -16,6 +16,7 @@ router.get('/user', groupController.getUserGroups);
 router.get('/code/:joinCode', groupController.findGroupByCode);
 router.get('/:id', groupController.getGroupDetails);
 router.get('/:id/leaderboard', groupController.getGroupLeaderboard);
+router.post('/:id/recalculate-points', groupController.recalculateGroupPointsEndpoint);
 router.get('/:id/change-requests', changeRequestController.getGroupChangeRequests);
 router.post('/:id/join', groupController.joinGroup);
 router.delete('/:id/leave', groupController.leaveGroup);

@@ -247,7 +247,8 @@ export const updateMatchScore = async (req: Request, res: Response) => {
       await pointsUpdateService.updateGroupPoints(
         prediction.userId,
         matchData.leagueId,
-        points
+        points,
+        matchData.weekNumber || undefined
       );
     }
 

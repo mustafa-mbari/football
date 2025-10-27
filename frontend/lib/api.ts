@@ -141,8 +141,10 @@ export const groupsApi = {
   getUserGroups: () => api.get('/groups/user'),
   getById: (id: number) => api.get(`/groups/${id}`),
   getByCode: (joinCode: string) => api.get(`/groups/code/${joinCode}`),
-  getLeaderboard: (id: number, leagueId?: number) =>
-    api.get(`/groups/${id}/leaderboard`, { params: { leagueId } }),
+  getLeaderboard: (id: number, leagueId?: number, weekNumber?: number) =>
+    api.get(`/groups/${id}/leaderboard`, { params: { leagueId, weekNumber } }),
+  recalculatePoints: (id: number) =>
+    api.post(`/groups/${id}/recalculate-points`),
 
   join: (id: number, joinCode?: string) =>
     api.post(`/groups/${id}/join`, { joinCode }),

@@ -112,6 +112,7 @@ function DashboardContent() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [publicGroups, setPublicGroups] = useState<Group[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
+  const [selectedGameweek, setSelectedGameweek] = useState<number | null>(null);
   const [publicLeaderboard, setPublicLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   // Private groups leaderboard
@@ -196,12 +197,12 @@ function DashboardContent() {
     fetchPointsRules();
   }, []);
 
-  // Fetch public group leaderboard when league changes
+  // Fetch public group leaderboard when league or gameweek changes
   useEffect(() => {
     if (selectedLeague) {
-      fetchPublicLeaderboard(selectedLeague);
+      fetchPublicLeaderboard(selectedLeague, selectedGameweek);
     }
-  }, [selectedLeague]);
+  }, [selectedLeague, selectedGameweek]);
 
   // Fetch private group leaderboard when group changes
   useEffect(() => {
@@ -210,11 +211,19 @@ function DashboardContent() {
     }
   }, [selectedPrivateGroup]);
 
-  const fetchPublicLeaderboard = async (leagueId: number) => {
+  const fetchPublicLeaderboard = async (leagueId: number, weekNumber?: number | null) => {
     try {
       const publicGroup = publicGroups.find(g => g.leagueId === leagueId);
       if (publicGroup) {
-        const response = await groupsApi.getLeaderboard(publicGroup.id, leagueId);
+        // Recalculate points first
+        await groupsApi.recalculatePoints(publicGroup.id);
+
+        // Then fetch leaderboard
+        const response = await groupsApi.getLeaderboard(
+          publicGroup.id,
+          leagueId,
+          weekNumber || undefined
+        );
         setPublicLeaderboard(response.data.data);
       }
     } catch (error) {
@@ -224,6 +233,10 @@ function DashboardContent() {
 
   const fetchPrivateLeaderboard = async (groupId: number) => {
     try {
+      // Recalculate points first
+      await groupsApi.recalculatePoints(groupId);
+
+      // Then fetch leaderboard
       const response = await groupsApi.getLeaderboard(groupId);
       setPrivateLeaderboard(response.data.data);
     } catch (error) {
@@ -356,7 +369,7 @@ function DashboardContent() {
 
               {/* League Selector */}
               {leagues.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 space-y-3">
                   <Select
                     value={selectedLeague?.toString() || ''}
                     onValueChange={(value) => setSelectedLeague(parseInt(value))}
@@ -376,6 +389,24 @@ function DashboardContent() {
                             {group.league?.name || group.name}
                           </SelectItem>
                         ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Gameweek Selector */}
+                  <Select
+                    value={selectedGameweek?.toString() || 'all'}
+                    onValueChange={(value) => setSelectedGameweek(value === 'all' ? null : parseInt(value))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select gameweek" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Gameweeks (Season)</SelectItem>
+                      {Array.from({ length: 38 }, (_, i) => i + 1).map((week) => (
+                        <SelectItem key={week} value={week.toString()}>
+                          Gameweek {week}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

@@ -5,7 +5,7 @@ export class PointsUpdateService {
    * Update group points for a user after they earn points from a prediction
    * This is called whenever a prediction is scored
    */
-  async updateGroupPoints(userId: number, leagueId: number, pointsEarned: number): Promise<void> {
+  async updateGroupPoints(userId: number, leagueId: number, pointsEarned: number, weekNumber?: number): Promise<void> {
     try {
       // Get all groups user is member of
       const memberships = await prisma.groupMember.findMany({
@@ -34,7 +34,7 @@ export class PointsUpdateService {
         }
 
         if (shouldAddPoints) {
-          await this.addPointsToMember(membership.id, leagueId, pointsEarned);
+          await this.addPointsToMember(membership.id, leagueId, pointsEarned, weekNumber);
         }
       }
     } catch (error) {
@@ -46,7 +46,7 @@ export class PointsUpdateService {
   /**
    * Add points to a specific group member for a specific league
    */
-  private async addPointsToMember(membershipId: number, leagueId: number, points: number): Promise<void> {
+  private async addPointsToMember(membershipId: number, leagueId: number, points: number, weekNumber?: number): Promise<void> {
     try {
       const member = await prisma.groupMember.findUnique({
         where: { id: membershipId }
@@ -67,11 +67,22 @@ export class PointsUpdateService {
       // Calculate new total points (sum of all leagues)
       const totalPoints = Object.values(pointsByLeague).reduce((sum, p) => sum + (p || 0), 0);
 
+      // Update gameweek-specific points if weekNumber is provided
+      const pointsByGameweek = (member.pointsByGameweek as Record<string, Record<string, number>>) || {};
+      if (weekNumber !== undefined && weekNumber !== null) {
+        if (!pointsByGameweek[leagueKey]) {
+          pointsByGameweek[leagueKey] = {};
+        }
+        const weekKey = weekNumber.toString();
+        pointsByGameweek[leagueKey][weekKey] = (pointsByGameweek[leagueKey][weekKey] || 0) + points;
+      }
+
       // Update member
       await prisma.groupMember.update({
         where: { id: membershipId },
         data: {
           pointsByLeague,
+          pointsByGameweek,
           totalPoints
         }
       });
@@ -121,18 +132,32 @@ export class PointsUpdateService {
         include: {
           match: {
             select: {
-              leagueId: true
+              leagueId: true,
+              weekNumber: true
             }
           }
         }
       });
 
-      // Group points by league
+      // Group points by league and by gameweek
       const pointsByLeague: Record<string, number> = {};
+      const pointsByGameweek: Record<string, Record<string, number>> = {};
 
       for (const prediction of predictions) {
         const leagueKey = prediction.match.leagueId.toString();
+        const weekNumber = prediction.match.weekNumber;
+
+        // Accumulate league totals
         pointsByLeague[leagueKey] = (pointsByLeague[leagueKey] || 0) + prediction.totalPoints;
+
+        // Accumulate gameweek totals
+        if (weekNumber !== null && weekNumber !== undefined) {
+          if (!pointsByGameweek[leagueKey]) {
+            pointsByGameweek[leagueKey] = {};
+          }
+          const weekKey = weekNumber.toString();
+          pointsByGameweek[leagueKey][weekKey] = (pointsByGameweek[leagueKey][weekKey] || 0) + prediction.totalPoints;
+        }
       }
 
       // Calculate total
@@ -153,6 +178,7 @@ export class PointsUpdateService {
           where: { id: membership.id },
           data: {
             pointsByLeague,
+            pointsByGameweek,
             totalPoints
           }
         });

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
+import { pointsUpdateService } from '../services/pointsUpdateService';
 
 // Create a new private group
 export const createGroup = async (req: Request, res: Response) => {
@@ -291,11 +292,11 @@ export const getGroupDetails = async (req: Request, res: Response) => {
   }
 };
 
-// Get group leaderboard with optional league filter
+// Get group leaderboard with optional league and gameweek filter
 export const getGroupLeaderboard = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { leagueId } = req.query;
+    const { leagueId, weekNumber } = req.query;
     const userId = (req as any).userId;
 
     const group = await prisma.group.findUnique({
@@ -332,17 +333,23 @@ export const getGroupLeaderboard = async (req: Request, res: Response) => {
       });
     }
 
-    // Calculate points based on league filter
+    // Calculate points based on league and gameweek filter
     const leaderboard = group.members.map(member => {
       const pointsByLeague = member.pointsByLeague as Record<string, number>;
+      const pointsByGameweek = member.pointsByGameweek as Record<string, Record<string, number>>;
 
       let points = 0;
-      if (leagueId) {
-        // Filter by specific league
-        points = pointsByLeague[leagueId.toString()] || 0;
-      } else if (group.leagueId) {
-        // Public group - use group's league
-        points = pointsByLeague[group.leagueId.toString()] || 0;
+
+      // Determine which league to use
+      const targetLeagueId = leagueId?.toString() || group.leagueId?.toString();
+
+      if (weekNumber && targetLeagueId) {
+        // Gameweek-specific points for a league
+        const weekKey = weekNumber.toString();
+        points = pointsByGameweek?.[targetLeagueId]?.[weekKey] || 0;
+      } else if (targetLeagueId) {
+        // All-time points for a specific league
+        points = pointsByLeague[targetLeagueId] || 0;
       } else {
         // Cross-league private group - sum all leagues
         points = Object.values(pointsByLeague).reduce((sum, p) => sum + (p || 0), 0);
@@ -765,5 +772,24 @@ export const autoJoinPublicGroup = async (userId: number, leagueId: number) => {
     console.log(`User ${userId} auto-joined public group ${publicGroup.name}`);
   } catch (error) {
     console.error('Error auto-joining public group:', error);
+  }
+};
+
+// Recalculate points for a group (endpoint)
+export const recalculateGroupPointsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await pointsUpdateService.recalculateGroupPoints(parseInt(id));
+
+    res.json({
+      success: true,
+      message: 'Points recalculated successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
