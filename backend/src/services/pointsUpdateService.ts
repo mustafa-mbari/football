@@ -272,6 +272,7 @@ export class PointsUpdateService {
   /**
    * Recalculate points for all groups and all users
    * Use this after major changes or data migrations
+   * OPTIMIZED: Uses bulk operations and parallel processing
    */
   async recalculateAllGroupPoints(): Promise<void> {
     try {
@@ -296,17 +297,120 @@ export class PointsUpdateService {
         console.log(`✅ Fixed ${fixResult.count} unprocessed predictions globally\n`);
       }
 
+      // OPTIMIZATION: Fetch all groups with members and their predictions in optimized queries
       const groups = await prisma.group.findMany({
         include: {
-          members: true
+          members: {
+            include: {
+              user: {
+                select: { id: true }
+              }
+            }
+          }
         }
       });
 
-      console.log(`Found ${groups.length} groups`);
+      console.log(`Found ${groups.length} groups with total members to recalculate`);
 
-      for (const group of groups) {
-        console.log(`\nProcessing group: ${group.name} (${group.members.length} members)`);
-        await this.recalculateGroupPoints(group.id);
+      // OPTIMIZATION: Process all groups in parallel batches
+      const BATCH_SIZE = 5; // Process 5 groups at a time
+      const updateOperations = [];
+
+      for (let i = 0; i < groups.length; i += BATCH_SIZE) {
+        const groupBatch = groups.slice(i, i + BATCH_SIZE);
+
+        // Process each batch in parallel
+        const batchPromises = groupBatch.map(async (group) => {
+          console.log(`Processing group: ${group.name} (${group.members.length} members)`);
+
+          // Build where clause for this group's predictions
+          const whereClause: any = {
+            isProcessed: true,
+            match: {}
+          };
+
+          // Filter by league if group is league-specific
+          if (group.leagueId) {
+            whereClause.match.leagueId = group.leagueId;
+          }
+
+          // Filter by allowed teams if specified
+          if (group.allowedTeamIds && group.allowedTeamIds.length > 0) {
+            whereClause.match.OR = [
+              { homeTeamId: { in: group.allowedTeamIds } },
+              { awayTeamId: { in: group.allowedTeamIds } }
+            ];
+          }
+
+          // OPTIMIZATION: Fetch all predictions for all members of this group in one query
+          const allPredictions = await prisma.prediction.findMany({
+            where: {
+              ...whereClause,
+              userId: { in: group.members.map(m => m.userId) }
+            },
+            select: {
+              userId: true,
+              totalPoints: true,
+              match: {
+                select: {
+                  leagueId: true,
+                  weekNumber: true
+                }
+              }
+            }
+          });
+
+          // Group predictions by userId for fast lookup
+          const predictionsByUser = new Map<number, any[]>();
+          for (const pred of allPredictions) {
+            if (!predictionsByUser.has(pred.userId)) {
+              predictionsByUser.set(pred.userId, []);
+            }
+            predictionsByUser.get(pred.userId)!.push(pred);
+          }
+
+          // Calculate points for each member
+          const memberUpdates = group.members.map(member => {
+            const userPredictions = predictionsByUser.get(member.userId) || [];
+
+            const pointsByLeague: Record<string, number> = {};
+            const pointsByGameweek: Record<string, Record<string, number>> = {};
+
+            for (const prediction of userPredictions) {
+              const leagueKey = prediction.match.leagueId.toString();
+              const weekNumber = prediction.match.weekNumber;
+
+              // Accumulate league totals
+              pointsByLeague[leagueKey] = (pointsByLeague[leagueKey] || 0) + prediction.totalPoints;
+
+              // Accumulate gameweek totals
+              if (weekNumber !== null && weekNumber !== undefined) {
+                if (!pointsByGameweek[leagueKey]) {
+                  pointsByGameweek[leagueKey] = {};
+                }
+                const weekKey = weekNumber.toString();
+                pointsByGameweek[leagueKey][weekKey] = (pointsByGameweek[leagueKey][weekKey] || 0) + prediction.totalPoints;
+              }
+            }
+
+            // Calculate total
+            const totalPoints = Object.values(pointsByLeague).reduce((sum, p) => sum + (p || 0), 0);
+
+            return prisma.groupMember.update({
+              where: { id: member.id },
+              data: {
+                pointsByLeague,
+                pointsByGameweek,
+                totalPoints
+              }
+            });
+          });
+
+          // Execute all member updates for this group in parallel
+          return Promise.all(memberUpdates);
+        });
+
+        await Promise.all(batchPromises);
       }
 
       console.log('\n✅ Full recalculation completed');

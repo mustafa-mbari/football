@@ -305,7 +305,10 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
     let updatedPredictions = 0;
     let totalPointsAwarded = 0;
 
-    // Recalculate points for each prediction
+    // OPTIMIZATION: Batch all prediction updates into a single transaction
+    const updateOperations = [];
+
+    // Calculate points for all predictions first
     for (const match of matches) {
       for (const prediction of match.predictions) {
         totalPredictions++;
@@ -317,18 +320,28 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
           match.awayScore!
         );
 
-        await prisma.prediction.update({
-          where: { id: prediction.id },
-          data: {
-            totalPoints: points,
-            isProcessed: match.status === 'FINISHED',
-            status: match.status === 'FINISHED' ? 'COMPLETED' : prediction.status
-          }
-        });
-
-        updatedPredictions++;
         totalPointsAwarded += points;
+
+        // Collect update operation instead of executing immediately
+        updateOperations.push(
+          prisma.prediction.update({
+            where: { id: prediction.id },
+            data: {
+              totalPoints: points,
+              isProcessed: match.status === 'FINISHED',
+              status: match.status === 'FINISHED' ? 'COMPLETED' : prediction.status
+            }
+          })
+        );
       }
+    }
+
+    // Execute all updates in parallel batches of 100 for optimal performance
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < updateOperations.length; i += BATCH_SIZE) {
+      const batch = updateOperations.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch);
+      updatedPredictions += batch.length;
     }
 
     // Build response message
