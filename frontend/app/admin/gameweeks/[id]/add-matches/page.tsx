@@ -74,13 +74,13 @@ export default function AddMatchesPage() {
   const fetchData = async () => {
     try {
       // Fetch gameweek info
-      const gwResponse = await fetch(`http://localhost:7070/api/gameweeks/${params.id}`);
+      const gwResponse = await fetch(`${getApiUrl()}/api/gameweeks/${params.id}`);
       if (gwResponse.ok) {
         const gwData = await gwResponse.json();
         setGameWeek(gwData.data);
 
         // Fetch teams for this league
-        const teamsResponse = await fetch(`http://localhost:7070/api/teams/league/${gwData.data.league.id}`);
+        const teamsResponse = await fetch(`${getApiUrl()}/api/teams/league/${gwData.data.league.id}`);
         if (teamsResponse.ok) {
           const teamsData = await teamsResponse.json();
           setTeams(teamsData.data);
@@ -141,7 +141,7 @@ export default function AddMatchesPage() {
       // Combine date and time
       const dateTimeString = `${matchDate}T${matchTime}:00`;
 
-      const response = await fetch(`http://localhost:7070/api/gameweeks/${params.id}/create-match`, {
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/${params.id}/create-match`, {
         method: 'POST',
         credentials: 'include',
         headers: {

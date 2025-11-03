@@ -90,7 +90,7 @@ export default function UpdateStandingsPage() {
 
     try {
       setRecalculating(true);
-      const response = await fetch(`http://localhost:7070/api/tables/recalculate/${leagueId}`, {
+      const response = await fetch(`${getApiUrl()}/api/tables/recalculate/${leagueId}`, {
         method: 'POST',
         credentials: 'include',
       });

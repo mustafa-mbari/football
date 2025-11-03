@@ -108,10 +108,10 @@ export default function BulkMatchImportPage() {
     try {
       // Fetch all teams for all 3 leagues
       const [plTeamsRes, laLigaTeamsRes, bundesligaTeamsRes, gameWeeksRes] = await Promise.all([
-        fetch('http://localhost:7070/api/teams/league/1', { credentials: 'include' }), // Premier League
-        fetch('http://localhost:7070/api/teams/league/2', { credentials: 'include' }), // La Liga
-        fetch('http://localhost:7070/api/teams/league/3', { credentials: 'include' }), // Bundesliga
-        fetch('http://localhost:7070/api/gameweeks', { credentials: 'include' })
+        fetch('${getApiUrl()}/api/teams/league/1', { credentials: 'include' }), // Premier League
+        fetch('${getApiUrl()}/api/teams/league/2', { credentials: 'include' }), // La Liga
+        fetch('${getApiUrl()}/api/teams/league/3', { credentials: 'include' }), // Bundesliga
+        fetch('${getApiUrl()}/api/gameweeks', { credentials: 'include' })
       ]);
 
       const allTeams: Team[] = [];
@@ -226,7 +226,7 @@ export default function BulkMatchImportPage() {
     try {
       setImporting(true);
 
-      const response = await fetch('http://localhost:7070/api/matches/bulk-import-by-id', {
+      const response = await fetch('${getApiUrl()}/api/matches/bulk-import-by-id', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -303,10 +303,10 @@ export default function BulkMatchImportPage() {
     console.log('Fetching teams and gameweeks for', detectedLeague);
     try {
       const [plTeamsRes, laLigaTeamsRes, bundesligaTeamsRes, gameWeeksRes] = await Promise.all([
-        fetch('http://localhost:7070/api/teams/league/1', { credentials: 'include' }),
-        fetch('http://localhost:7070/api/teams/league/2', { credentials: 'include' }),
-        fetch('http://localhost:7070/api/teams/league/3', { credentials: 'include' }),
-        fetch('http://localhost:7070/api/gameweeks', { credentials: 'include' })
+        fetch('${getApiUrl()}/api/teams/league/1', { credentials: 'include' }),
+        fetch('${getApiUrl()}/api/teams/league/2', { credentials: 'include' }),
+        fetch('${getApiUrl()}/api/teams/league/3', { credentials: 'include' }),
+        fetch('${getApiUrl()}/api/gameweeks', { credentials: 'include' })
       ]);
 
       let fetchedTeams: Team[] = [];
@@ -583,7 +583,7 @@ export default function BulkMatchImportPage() {
       const results = [];
 
       for (const item of parsed) {
-        const response = await fetch('http://localhost:7070/api/matches/bulk-delete-scheduled', {
+        const response = await fetch('${getApiUrl()}/api/matches/bulk-delete-scheduled', {
           method: 'POST',
           credentials: 'include',
           headers: {

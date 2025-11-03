@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { predictionsApi, footballDataApi, api } from '@/lib/api';
+import { predictionsApi, footballDataApi, api, getApiUrl } from '@/lib/api';
 
 interface Team {
   id: number;
@@ -89,6 +89,7 @@ export default function GameWeekDetailPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [prevGameWeekId, setPrevGameWeekId] = useState<number | null>(null);
   const [nextGameWeekId, setNextGameWeekId] = useState<number | null>(null);
+  const [recalculatingStandings, setRecalculatingStandings] = useState(false);
   const [editForm, setEditForm] = useState({
     homeTeamId: 0,
     awayTeamId: 0,
@@ -216,7 +217,7 @@ export default function GameWeekDetailPage() {
 
     try {
       setSyncingMatch(matchId);
-      const response = await fetch(`http://localhost:7070/api/sync/match/${matchId}`, {
+      const response = await fetch(`${getApiUrl()}/api/sync/match/${matchId}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -250,7 +251,7 @@ export default function GameWeekDetailPage() {
 
     try {
       setSyncingWeek(true);
-      const response = await fetch(`http://localhost:7070/api/sync/resync/gameweek/${params.id}`, {
+      const response = await fetch(`${getApiUrl()}/api/sync/resync/gameweek/${params.id}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -268,6 +269,41 @@ export default function GameWeekDetailPage() {
       console.error(error);
     } finally {
       setSyncingWeek(false);
+    }
+  };
+
+  const handleRecalculateStandings = async () => {
+    if (!gameWeek) return;
+
+    const confirmed = confirm(
+      `Recalculate Main League Standings?\n\n` +
+      '⚠️ This will:\n' +
+      '1. Delete current standings for this league\n' +
+      '2. Recalculate from ALL finished matches across ALL gameweeks\n' +
+      '3. Update team positions, form, and stats\n\n' +
+      'Use this after editing match scores to update the main standings table.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setRecalculatingStandings(true);
+      const response = await fetch(`${getApiUrl()}/api/tables/recalculate/${gameWeek.league.id}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message || 'Standings recalculated successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to recalculate standings');
+      }
+    } catch (error) {
+      alert('Failed to recalculate standings');
+      console.error(error);
+    } finally {
+      setRecalculatingStandings(false);
     }
   };
 
@@ -293,7 +329,7 @@ export default function GameWeekDetailPage() {
 
     try {
       setCompletingWeek(true);
-      const response = await fetch(`http://localhost:7070/api/gameweeks/${params.id}/complete`, {
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/${params.id}/complete`, {
         method: 'PUT',
         credentials: 'include',
         headers: {
@@ -367,7 +403,7 @@ export default function GameWeekDetailPage() {
 
       console.log('Updating match with payload:', payload);
 
-      const response = await fetch(`http://localhost:7070/api/matches/${selectedMatch.id}`, {
+      const response = await fetch(`${getApiUrl()}/api/matches/${selectedMatch.id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
@@ -406,7 +442,7 @@ export default function GameWeekDetailPage() {
     if (!selectedMatch) return;
 
     try {
-      const response = await fetch(`http://localhost:7070/api/matches/${selectedMatch.id}`, {
+      const response = await fetch(`${getApiUrl()}/api/matches/${selectedMatch.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -616,8 +652,18 @@ export default function GameWeekDetailPage() {
                 disabled={syncingWeek}
                 variant="outline"
                 className="border-purple-500 text-purple-600 hover:bg-purple-50"
+                title="Updates Team Stats for THIS gameweek only"
               >
-                {syncingWeek ? 'Re-syncing...' : '🔄 Re-Sync Matches to Tables'}
+                {syncingWeek ? 'Re-syncing...' : '🔄 Re-Sync Week Stats'}
+              </Button>
+              <Button
+                onClick={handleRecalculateStandings}
+                disabled={recalculatingStandings}
+                variant="outline"
+                className="border-green-500 text-green-600 hover:bg-green-50"
+                title="Recalculate main league standings table"
+              >
+                {recalculatingStandings ? 'Recalculating...' : '📊 Recalculate Standings'}
               </Button>
               {!isCompleted && allMatchesHaveScores && (
                 <Button

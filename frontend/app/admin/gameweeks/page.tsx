@@ -134,7 +134,7 @@ function GameWeeksContent() {
 
     setSyncing(true);
     try {
-      const response = await fetch('http://localhost:7070/api/gameweeks/sync-matches', {
+      const response = await fetch('${getApiUrl()}/api/gameweeks/sync-matches', {
         method: 'POST',
         credentials: 'include',
         headers: {

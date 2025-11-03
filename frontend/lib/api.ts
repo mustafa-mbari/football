@@ -14,6 +14,11 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Export helper to get full API URL (without /api suffix)
+export const getApiUrl = () => {
+  return API_BASE_URL.replace('/api', '');
+};
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,

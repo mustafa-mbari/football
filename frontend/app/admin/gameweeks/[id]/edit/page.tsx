@@ -50,7 +50,7 @@ export default function EditGameWeekPage() {
 
   const fetchGameWeek = async () => {
     try {
-      const response = await fetch(`http://localhost:7070/api/gameweeks/${params.id}`);
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/${params.id}`);
       if (response.ok) {
         const data = await response.json();
         const gw = data.data;
@@ -79,7 +79,7 @@ export default function EditGameWeekPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:7070/api/gameweeks/${params.id}`, {
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/${params.id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
