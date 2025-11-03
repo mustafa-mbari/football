@@ -414,130 +414,119 @@ export const resyncGameWeek = async (req: Request, res: Response) => {
       where: { gameWeekId: gameWeek.id }
     });
 
-    // Step 2: Recalculate TeamGameWeekStats for THIS gameweek only (NOT the main Table)
-    let processedMatches = 0;
-    const errors: string[] = [];
+    // Step 2: Calculate stats for all teams in memory first
+    const teamStats: {
+      [teamId: number]: {
+        matchesPlayed: number;
+        won: number;
+        drawn: number;
+        lost: number;
+        goalsFor: number;
+        goalsAgainst: number;
+        goalDifference: number;
+        points: number;
+        results: string[];
+      };
+    } = {};
 
+    // Process all matches and accumulate stats
     for (const match of finishedMatches) {
-      try {
-        const homeWin = match.homeScore! > match.awayScore!;
-        const awayWin = match.awayScore! > match.homeScore!;
-        const draw = match.homeScore === match.awayScore;
+      const homeWin = match.homeScore! > match.awayScore!;
+      const awayWin = match.awayScore! > match.homeScore!;
+      const draw = match.homeScore === match.awayScore;
 
-        // Calculate result letters
-        const homeResult = homeWin ? 'W' : draw ? 'D' : 'L';
-        const awayResult = awayWin ? 'W' : draw ? 'D' : 'L';
+      // Initialize team stats if not exists
+      if (!teamStats[match.homeTeamId]) {
+        teamStats[match.homeTeamId] = {
+          matchesPlayed: 0,
+          won: 0,
+          drawn: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDifference: 0,
+          points: 0,
+          results: []
+        };
+      }
+      if (!teamStats[match.awayTeamId]) {
+        teamStats[match.awayTeamId] = {
+          matchesPlayed: 0,
+          won: 0,
+          drawn: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDifference: 0,
+          points: 0,
+          results: []
+        };
+      }
 
-        // Update/Create home team gameweek stats
-        const homeStats = await prisma.teamGameWeekStats.findUnique({
-          where: {
-            gameWeekId_teamId: {
-              gameWeekId: gameWeek.id,
-              teamId: match.homeTeamId
-            }
-          }
-        });
+      // Update home team stats
+      teamStats[match.homeTeamId].matchesPlayed++;
+      teamStats[match.homeTeamId].goalsFor += match.homeScore!;
+      teamStats[match.homeTeamId].goalsAgainst += match.awayScore!;
+      teamStats[match.homeTeamId].goalDifference += match.homeScore! - match.awayScore!;
+      if (homeWin) {
+        teamStats[match.homeTeamId].won++;
+        teamStats[match.homeTeamId].points += 3;
+        teamStats[match.homeTeamId].results.push('W');
+      } else if (draw) {
+        teamStats[match.homeTeamId].drawn++;
+        teamStats[match.homeTeamId].points += 1;
+        teamStats[match.homeTeamId].results.push('D');
+      } else {
+        teamStats[match.homeTeamId].lost++;
+        teamStats[match.homeTeamId].results.push('L');
+      }
 
-        if (homeStats) {
-          await prisma.teamGameWeekStats.update({
-            where: {
-              gameWeekId_teamId: {
-                gameWeekId: gameWeek.id,
-                teamId: match.homeTeamId
-              }
-            },
-            data: {
-              matchesPlayed: { increment: 1 },
-              won: homeWin ? { increment: 1 } : undefined,
-              drawn: draw ? { increment: 1 } : undefined,
-              lost: awayWin ? { increment: 1 } : undefined,
-              goalsFor: { increment: match.homeScore! },
-              goalsAgainst: { increment: match.awayScore! },
-              goalDifference: { increment: match.homeScore! - match.awayScore! },
-              points: { increment: homeWin ? 3 : draw ? 1 : 0 },
-              result: homeStats.result ? `${homeStats.result}${homeResult}` : homeResult
-            }
-          });
-        } else {
-          await prisma.teamGameWeekStats.create({
-            data: {
-              gameWeekId: gameWeek.id,
-              teamId: match.homeTeamId,
-              matchesPlayed: 1,
-              won: homeWin ? 1 : 0,
-              drawn: draw ? 1 : 0,
-              lost: awayWin ? 1 : 0,
-              goalsFor: match.homeScore!,
-              goalsAgainst: match.awayScore!,
-              goalDifference: match.homeScore! - match.awayScore!,
-              points: homeWin ? 3 : draw ? 1 : 0,
-              result: homeResult
-            }
-          });
-        }
-
-        // Update/Create away team gameweek stats
-        const awayStats = await prisma.teamGameWeekStats.findUnique({
-          where: {
-            gameWeekId_teamId: {
-              gameWeekId: gameWeek.id,
-              teamId: match.awayTeamId
-            }
-          }
-        });
-
-        if (awayStats) {
-          await prisma.teamGameWeekStats.update({
-            where: {
-              gameWeekId_teamId: {
-                gameWeekId: gameWeek.id,
-                teamId: match.awayTeamId
-              }
-            },
-            data: {
-              matchesPlayed: { increment: 1 },
-              won: awayWin ? { increment: 1 } : undefined,
-              drawn: draw ? { increment: 1 } : undefined,
-              lost: homeWin ? { increment: 1 } : undefined,
-              goalsFor: { increment: match.awayScore! },
-              goalsAgainst: { increment: match.homeScore! },
-              goalDifference: { increment: match.awayScore! - match.homeScore! },
-              points: { increment: awayWin ? 3 : draw ? 1 : 0 },
-              result: awayStats.result ? `${awayStats.result}${awayResult}` : awayResult
-            }
-          });
-        } else {
-          await prisma.teamGameWeekStats.create({
-            data: {
-              gameWeekId: gameWeek.id,
-              teamId: match.awayTeamId,
-              matchesPlayed: 1,
-              won: awayWin ? 1 : 0,
-              drawn: draw ? 1 : 0,
-              lost: homeWin ? 1 : 0,
-              goalsFor: match.awayScore!,
-              goalsAgainst: match.homeScore!,
-              goalDifference: match.awayScore! - match.homeScore!,
-              points: awayWin ? 3 : draw ? 1 : 0,
-              result: awayResult
-            }
-          });
-        }
-
-        processedMatches++;
-      } catch (error: any) {
-        errors.push(`Match ${match.id}: ${error.message}`);
+      // Update away team stats
+      teamStats[match.awayTeamId].matchesPlayed++;
+      teamStats[match.awayTeamId].goalsFor += match.awayScore!;
+      teamStats[match.awayTeamId].goalsAgainst += match.homeScore!;
+      teamStats[match.awayTeamId].goalDifference += match.awayScore! - match.homeScore!;
+      if (awayWin) {
+        teamStats[match.awayTeamId].won++;
+        teamStats[match.awayTeamId].points += 3;
+        teamStats[match.awayTeamId].results.push('W');
+      } else if (draw) {
+        teamStats[match.awayTeamId].drawn++;
+        teamStats[match.awayTeamId].points += 1;
+        teamStats[match.awayTeamId].results.push('D');
+      } else {
+        teamStats[match.awayTeamId].lost++;
+        teamStats[match.awayTeamId].results.push('L');
       }
     }
 
+    // Step 3: Bulk create all team stats in one operation
+    const statsToCreate = Object.entries(teamStats).map(([teamId, stats]) => ({
+      gameWeekId: gameWeek.id,
+      teamId: parseInt(teamId),
+      matchesPlayed: stats.matchesPlayed,
+      won: stats.won,
+      drawn: stats.drawn,
+      lost: stats.lost,
+      goalsFor: stats.goalsFor,
+      goalsAgainst: stats.goalsAgainst,
+      goalDifference: stats.goalDifference,
+      points: stats.points,
+      result: stats.results.join('')
+    }));
+
+    await prisma.teamGameWeekStats.createMany({
+      data: statsToCreate
+    });
+
     res.json({
       success: true,
-      message: `✅ GameWeek ${gameWeek.weekNumber} re-synced! Processed ${processedMatches} finished matches for THIS gameweek only.`,
+      message: `✅ GameWeek ${gameWeek.weekNumber} re-synced! Processed ${finishedMatches.length} finished matches for THIS gameweek only.`,
       data: {
         gameWeekId: parseInt(gameWeekId),
         weekNumber: gameWeek.weekNumber,
-        matchesProcessed: processedMatches,
-        errors: errors.length > 0 ? errors : undefined
+        matchesProcessed: finishedMatches.length,
+        teamsUpdated: statsToCreate.length
       }
     });
   } catch (error: any) {
