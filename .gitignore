@@ -56,19 +56,23 @@ backend/prisma/seeds/data/backup/
 # Claude
 .claude/settings.local.json
 
-# Images and Icons
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.svg
-*.ico
-*.webp
-*.bmp
-*.tiff
-frontend/public/logos/
+# Images and Icons (excluding team logos which are needed for deployment)
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.svg
+# *.ico
+# *.webp
+# *.bmp
+# *.tiff
+# frontend/public/logos/
 backend/public/images/
 public/images/
-public/logos/
+# public/logos/
 public/icons/
 nul
+
+# Allow team logos for deployment
+!frontend/public/logos/**/*.svg
+!frontend/public/logos/**/*.png

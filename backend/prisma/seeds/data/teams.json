@@ -54,7 +54,7 @@
     { "name": "Hamburger SV", "code": "HSV", "stadium": "Volksparkstadion", "founded": 1887, "color": "#0066B2", "logo": "/logos/bundesliga/hamburg.svg" },
     { "name": "FC Heidenheim", "code": "FCH", "stadium": "Voith-Arena", "founded": 1846, "color": "#003C7D", "logo": "/logos/bundesliga/heidenheim.svg" },
     { "name": "TSG Hoffenheim", "code": "HOF", "stadium": "PreZero Arena", "founded": 1899, "color": "#1961B5", "logo": "/logos/bundesliga/hoffenheim.svg" },
-    { "name": "1. FC Köln", "code": "KOE", "stadium": "RheinEnergieStadion", "founded": 1948, "color": "#ED1C24", "logo": "/logos/bundesliga/koln.psvg" },
+    { "name": "1. FC Köln", "code": "KOE", "stadium": "RheinEnergieStadion", "founded": 1948, "color": "#ED1C24", "logo": "/logos/bundesliga/koln.svg" },
     { "name": "Mainz 05", "code": "M05", "stadium": "MEWA Arena", "founded": 1905, "color": "#C3141E", "logo": "/logos/bundesliga/mainz.svg" },
     { "name": "RB Leipzig", "code": "RBL", "stadium": "Red Bull Arena", "founded": 2009, "color": "#DD0741", "logo": "/logos/bundesliga/leipzig.svg" },
     { "name": "St. Pauli", "code": "STP", "stadium": "Millerntor-Stadion", "founded": 1910, "color": "#492F20", "logo": "/logos/bundesliga/st-pauli.svg" },
