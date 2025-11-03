@@ -46,8 +46,9 @@ export const getStandingsByLeague = async (req: Request, res: Response) => {
 
 export const getAllStandings = async (req: Request, res: Response) => {
   try {
-    // Get all leagues
+    // Get all leagues with their standings in a single optimized query
     const leagues = await prisma.league.findMany({
+      where: { isActive: true },
       select: {
         id: true,
         name: true,
@@ -57,107 +58,47 @@ export const getAllStandings = async (req: Request, res: Response) => {
       }
     });
 
-    // Get standings for each league
-    const standingsByLeague = await Promise.all(
-      leagues.map(async (league: any) => {
-        const standings = await prisma.table.findMany({
-          where: { leagueId: league.id },
-          include: {
-            team: {
-              select: {
-                id: true,
-                name: true,
-                shortName: true,
-                code: true,
-                logoUrl: true,
-                primaryColor: true
-              }
-            }
-          },
-          orderBy: [
-            { points: 'desc' },
-            { goalDifference: 'desc' },
-            { goalsFor: 'desc' }
-          ]
-        });
+    // Get all standings for all leagues at once
+    const allStandings = await prisma.table.findMany({
+      where: {
+        leagueId: {
+          in: leagues.map(l => l.id)
+        }
+      },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+            primaryColor: true
+          }
+        }
+      },
+      orderBy: [
+        { leagueId: 'asc' },
+        { points: 'desc' },
+        { goalDifference: 'desc' },
+        { goalsFor: 'desc' }
+      ]
+    });
 
-        // Calculate next opponent for each team
-        const standingsWithNextOpponent = await Promise.all(
-          standings.map(async (standing: any, index: number) => {
-            let nextOpponent = null;
+    // Group standings by league
+    const standingsByLeague = leagues.map(league => {
+      const leagueStandings = allStandings
+        .filter(s => s.leagueId === league.id)
+        .map((standing, index) => ({
+          ...standing,
+          position: index + 1
+        }));
 
-            // Find the next gameweek (played + 1)
-            const nextGameWeekNumber = standing.played + 1;
-
-            // Find the gameweek
-            const nextGameWeek = await prisma.gameWeek.findFirst({
-              where: {
-                leagueId: league.id,
-                weekNumber: nextGameWeekNumber
-              }
-            });
-
-            if (nextGameWeek) {
-              // Find the match in that gameweek for this team
-              const gameWeekMatch = await prisma.gameWeekMatch.findFirst({
-                where: {
-                  gameWeekId: nextGameWeek.id,
-                  match: {
-                    OR: [
-                      { homeTeamId: standing.teamId },
-                      { awayTeamId: standing.teamId }
-                    ]
-                  }
-                },
-                include: {
-                  match: {
-                    include: {
-                      homeTeam: {
-                        select: {
-                          id: true,
-                          name: true,
-                          shortName: true,
-                          code: true,
-                          logoUrl: true
-                        }
-                      },
-                      awayTeam: {
-                        select: {
-                          id: true,
-                          name: true,
-                          shortName: true,
-                          code: true,
-                          logoUrl: true
-                        }
-                      }
-                    }
-                  }
-                }
-              });
-
-              if (gameWeekMatch) {
-                // Determine the opponent
-                const isHomeTeam = gameWeekMatch.match.homeTeamId === standing.teamId;
-                nextOpponent = isHomeTeam
-                  ? gameWeekMatch.match.awayTeam
-                  : gameWeekMatch.match.homeTeam;
-              }
-            }
-
-            return {
-              ...standing,
-              position: index + 1,
-              nextOpponent
-            };
-          })
-        );
-
-        return {
-          league,
-          standings: standingsWithNextOpponent
-        };
-      })
-    );
+      return {
+        league,
+        standings: leagueStandings
+      };
+    });
 
     res.json({
       success: true,
