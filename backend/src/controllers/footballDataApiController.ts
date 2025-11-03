@@ -524,14 +524,63 @@ export const prepareGameWeekSync = async (req: Request, res: Response) => {
 
     const apiMatches = apiResponse.data.matches || [];
 
+    // OPTIMIZATION: Fetch all teams in this league once and cache them
+    const allLeagueTeams = await prisma.team.findMany({
+      where: {
+        leagues: {
+          some: {
+            leagueId: gameWeek.leagueId,
+            isActive: true
+          }
+        }
+      }
+    });
+
+    // Build lookup maps for fast matching
+    const teamCache = new Map<string, any>();
+    for (const team of allLeagueTeams) {
+      // Index by various name fields (lowercase for case-insensitive matching)
+      if (team.apiName) teamCache.set(team.apiName.toLowerCase(), team);
+      if (team.name) teamCache.set(team.name.toLowerCase(), team);
+      if (team.shortName) teamCache.set(team.shortName.toLowerCase(), team);
+    }
+
+    // Helper function to match team using cache
+    const matchTeamFromCache = (apiTeamName: string | null | undefined) => {
+      if (!apiTeamName) return null;
+
+      const nameLower = apiTeamName.toLowerCase();
+
+      // Priority 1: Exact match
+      if (teamCache.has(nameLower)) {
+        return teamCache.get(nameLower);
+      }
+
+      // Priority 2: Fuzzy match (contains)
+      for (const team of allLeagueTeams) {
+        if (team.apiName?.toLowerCase().includes(nameLower) ||
+            team.name?.toLowerCase().includes(nameLower) ||
+            team.shortName?.toLowerCase().includes(nameLower) ||
+            nameLower.includes(team.name?.toLowerCase() || '') ||
+            nameLower.includes(team.shortName?.toLowerCase() || '')) {
+          return team;
+        }
+      }
+
+      return null;
+    };
+
     // Process each API match and determine if it's new or an update
     const syncPlan = [];
     const unmatchedTeams = new Set<string>();
 
+    // OPTIMIZATION: Collect all potential match lookups first
+    const matchLookups: Array<{homeTeam: any, awayTeam: any, apiMatch: any}> = [];
+
     for (const apiMatch of apiMatches) {
-      // Match teams
-      const homeTeam = await matchTeamByName(apiMatch.homeTeam?.name, gameWeek.leagueId);
-      const awayTeam = await matchTeamByName(apiMatch.awayTeam?.name, gameWeek.leagueId);
+      // Match teams using cache (no DB queries!)
+      const homeTeam = matchTeamFromCache(apiMatch.homeTeam?.name);
+      const awayTeam = matchTeamFromCache(apiMatch.awayTeam?.name);
 
       if (!homeTeam && apiMatch.homeTeam?.name) {
         unmatchedTeams.add(apiMatch.homeTeam.name);
@@ -540,23 +589,45 @@ export const prepareGameWeekSync = async (req: Request, res: Response) => {
         unmatchedTeams.add(apiMatch.awayTeam.name);
       }
 
-      // Check if match already exists in database
-      const existingMatch = homeTeam && awayTeam ? await prisma.match.findFirst({
-        where: {
-          leagueId: gameWeek.leagueId,
-          homeTeamId: homeTeam.id,
-          awayTeamId: awayTeam.id,
-          gameWeekMatches: {
-            some: {
-              gameWeekId: gameWeek.id
-            }
+      matchLookups.push({ homeTeam, awayTeam, apiMatch });
+    }
+
+    // OPTIMIZATION: Batch fetch all existing matches in one query
+    const teamPairs = matchLookups
+      .filter(m => m.homeTeam && m.awayTeam)
+      .map(m => ({ homeTeamId: m.homeTeam.id, awayTeamId: m.awayTeam.id }));
+
+    const existingMatches = teamPairs.length > 0 ? await prisma.match.findMany({
+      where: {
+        leagueId: gameWeek.leagueId,
+        gameWeekMatches: {
+          some: {
+            gameWeekId: gameWeek.id
           }
         },
-        include: {
-          homeTeam: true,
-          awayTeam: true
-        }
-      }) : null;
+        OR: teamPairs.map(pair => ({
+          homeTeamId: pair.homeTeamId,
+          awayTeamId: pair.awayTeamId
+        }))
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true
+      }
+    }) : [];
+
+    // Create a lookup map for existing matches
+    const existingMatchMap = new Map<string, any>();
+    for (const match of existingMatches) {
+      const key = `${match.homeTeamId}-${match.awayTeamId}`;
+      existingMatchMap.set(key, match);
+    }
+
+    // Build sync plan using cached data
+    for (const { homeTeam, awayTeam, apiMatch } of matchLookups) {
+      const existingMatch = homeTeam && awayTeam
+        ? existingMatchMap.get(`${homeTeam.id}-${awayTeam.id}`)
+        : null;
 
       const matchDate = new Date(apiMatch.utcDate);
       const status = apiMatch.status === 'FINISHED' ? 'FINISHED' :
