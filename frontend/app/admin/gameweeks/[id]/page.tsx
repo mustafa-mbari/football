@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { predictionsApi, footballDataApi } from '@/lib/api';
+import { predictionsApi, footballDataApi, api } from '@/lib/api';
 
 interface Team {
   id: number;
@@ -133,14 +133,9 @@ export default function GameWeekDetailPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:7070/api/leagues/${gameWeek.league.id}/teams`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched teams for league', gameWeek.league.id, ':', data.data);
-        setTeams(data.data || []);
-      } else {
-        console.error('Failed to fetch teams, status:', response.status);
-      }
+      const response = await api.get(`/leagues/${gameWeek.league.id}/teams`);
+      console.log('Fetched teams for league', gameWeek.league.id, ':', response.data.data);
+      setTeams(response.data.data || []);
     } catch (error) {
       console.error('Error fetching teams:', error);
     }
@@ -148,17 +143,14 @@ export default function GameWeekDetailPage() {
 
   const fetchTotalGameWeeks = async () => {
     try {
-      const response = await fetch('http://localhost:7070/api/gameweeks');
-      if (response.ok) {
-        const data = await response.json();
-        const gameweeks = data.data;
+      const response = await api.get('/gameweeks');
+      const gameweeks = response.data.data;
 
-        // Find current gameweek index and set prev/next IDs
-        const currentIndex = gameweeks.findIndex((gw: any) => gw.id === parseInt(params.id as string));
-        if (currentIndex !== -1) {
-          setPrevGameWeekId(currentIndex > 0 ? gameweeks[currentIndex - 1].id : null);
-          setNextGameWeekId(currentIndex < gameweeks.length - 1 ? gameweeks[currentIndex + 1].id : null);
-        }
+      // Find current gameweek index and set prev/next IDs
+      const currentIndex = gameweeks.findIndex((gw: any) => gw.id === parseInt(params.id as string));
+      if (currentIndex !== -1) {
+        setPrevGameWeekId(currentIndex > 0 ? gameweeks[currentIndex - 1].id : null);
+        setNextGameWeekId(currentIndex < gameweeks.length - 1 ? gameweeks[currentIndex + 1].id : null);
       }
     } catch (error) {
       console.error('Error fetching total gameweeks:', error);
@@ -167,16 +159,13 @@ export default function GameWeekDetailPage() {
 
   const fetchGameWeek = async () => {
     try {
-      const response = await fetch(`http://localhost:7070/api/gameweeks/${params.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        // Transform the nested structure to flat structure for easier use
-        const gameWeekData = data.data;
-        if (gameWeekData.matches) {
-          gameWeekData.matches = gameWeekData.matches.map((gw: any) => gw.match);
-        }
-        setGameWeek(gameWeekData);
+      const response = await api.get(`/gameweeks/${params.id}`);
+      // Transform the nested structure to flat structure for easier use
+      const gameWeekData = response.data.data;
+      if (gameWeekData.matches) {
+        gameWeekData.matches = gameWeekData.matches.map((gw: any) => gw.match);
       }
+      setGameWeek(gameWeekData);
     } catch (error) {
       console.error('Error fetching gameweek:', error);
     } finally {

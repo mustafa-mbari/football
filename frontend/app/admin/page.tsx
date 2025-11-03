@@ -30,18 +30,17 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:7070/api/gameweeks');
-      if (response.ok) {
-        const data = await response.json();
-        const gameWeeks = data.data;
+      // Import api at the top of the file
+      const { api } = await import('@/lib/api');
+      const response = await api.get('/gameweeks');
+      const gameWeeks = response.data.data;
 
-        setStats({
-          totalGameWeeks: gameWeeks.length,
-          currentGameWeeks: gameWeeks.filter((gw: any) => gw.isCurrent).length,
-          totalMatches: gameWeeks.reduce((sum: number, gw: any) => sum + gw._count.matches, 0),
-          totalTeams: gameWeeks.reduce((sum: number, gw: any) => sum + gw._count.teamStats, 0) / gameWeeks.length
-        });
-      }
+      setStats({
+        totalGameWeeks: gameWeeks.length,
+        currentGameWeeks: gameWeeks.filter((gw: any) => gw.isCurrent).length,
+        totalMatches: gameWeeks.reduce((sum: number, gw: any) => sum + gw._count.matches, 0),
+        totalTeams: gameWeeks.reduce((sum: number, gw: any) => sum + gw._count.teamStats, 0) / gameWeeks.length
+      });
     } catch (error) {
       console.error('Error fetching stats:', error);
     }

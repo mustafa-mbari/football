@@ -59,19 +59,16 @@ function GameWeeksContent() {
       const allLeagues = leaguesResponse.data.data;
       setLeagues(allLeagues);
 
-      // Fetch gameweeks
-      const response = await fetch('http://localhost:7070/api/gameweeks');
-      if (response.ok) {
-        const data = await response.json();
-        setGameWeeks(data.data);
+      // Fetch gameweeks using api client instead of hardcoded localhost
+      const gameweeksResponse = await api.get('/gameweeks');
+      setGameWeeks(gameweeksResponse.data.data);
 
-        // Check if there's a league in URL params, otherwise use first league
-        const leagueParam = searchParams.get('league');
-        if (leagueParam && allLeagues.some((l: League) => l.id.toString() === leagueParam)) {
-          setSelectedLeague(leagueParam);
-        } else if (allLeagues.length > 0) {
-          setSelectedLeague(allLeagues[0].id.toString());
-        }
+      // Check if there's a league in URL params, otherwise use first league
+      const leagueParam = searchParams.get('league');
+      if (leagueParam && allLeagues.some((l: League) => l.id.toString() === leagueParam)) {
+        setSelectedLeague(leagueParam);
+      } else if (allLeagues.length > 0) {
+        setSelectedLeague(allLeagues[0].id.toString());
       }
     } catch (error) {
       console.error('Error fetching gameweeks:', error);
