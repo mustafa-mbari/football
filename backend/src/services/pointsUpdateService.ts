@@ -312,8 +312,8 @@ export class PointsUpdateService {
 
       console.log(`Found ${groups.length} groups with total members to recalculate`);
 
-      // OPTIMIZATION: Process all groups in parallel batches
-      const BATCH_SIZE = 5; // Process 5 groups at a time
+      // OPTIMIZATION: Process groups in parallel batches (small batches to avoid connection pool exhaustion)
+      const BATCH_SIZE = 2; // Process 2 groups at a time to avoid connection pool issues
       const updateOperations = [];
 
       for (let i = 0; i < groups.length; i += BATCH_SIZE) {
@@ -396,18 +396,27 @@ export class PointsUpdateService {
             // Calculate total
             const totalPoints = Object.values(pointsByLeague).reduce((sum, p) => sum + (p || 0), 0);
 
-            return prisma.groupMember.update({
-              where: { id: member.id },
+            return {
+              id: member.id,
               data: {
                 pointsByLeague,
                 pointsByGameweek,
                 totalPoints
               }
-            });
+            };
           });
 
-          // Execute all member updates for this group in parallel
-          return Promise.all(memberUpdates);
+          // Execute member updates in batches to avoid connection pool exhaustion
+          const MEMBER_BATCH_SIZE = 10;
+          for (let j = 0; j < memberUpdates.length; j += MEMBER_BATCH_SIZE) {
+            const memberBatch = memberUpdates.slice(j, j + MEMBER_BATCH_SIZE);
+            await Promise.all(memberBatch.map(update =>
+              prisma.groupMember.update({
+                where: { id: update.id },
+                data: update.data
+              })
+            ));
+          }
         });
 
         await Promise.all(batchPromises);

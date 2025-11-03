@@ -336,8 +336,8 @@ export const recalculateAllPoints = async (req: Request, res: Response) => {
       }
     }
 
-    // Execute all updates in parallel batches of 100 for optimal performance
-    const BATCH_SIZE = 100;
+    // Execute all updates in parallel batches of 20 to avoid connection pool exhaustion
+    const BATCH_SIZE = 20;
     for (let i = 0; i < updateOperations.length; i += BATCH_SIZE) {
       const batch = updateOperations.slice(i, i + BATCH_SIZE);
       await Promise.all(batch);
