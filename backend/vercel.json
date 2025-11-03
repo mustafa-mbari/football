@@ -2,7 +2,9 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "dist/**"
+      "includeFiles": "dist/**",
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "routes": [
