@@ -287,7 +287,7 @@ export default function GameWeekDetailPage() {
 
     try {
       setRecalculatingStandings(true);
-      const response = await fetch(`${getApiUrl()}/api/tables/recalculate/${gameWeek.league.id}`, {
+      const response = await fetch(`${getApiUrl()}/api/standings/recalculate/${gameWeek.league.id}`, {
         method: 'POST',
         credentials: 'include',
       });
