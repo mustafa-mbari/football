@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getApiUrl } from '@/lib/api';
 
 interface GameWeekFormData {
   weekNumber: string;
@@ -118,7 +119,7 @@ export default function AddGameWeeksModal({
     setErrors([]);
 
     try {
-      const response = await fetch('http://localhost:7070/api/gameweeks/create', {
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/create`, {
         method: 'POST',
         credentials: 'include',
         headers: {

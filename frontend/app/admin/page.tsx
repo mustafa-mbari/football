@@ -134,9 +134,12 @@ export default function AdminDashboard() {
                   Predictions Management
                 </Button>
               </Link>
-              <Button className="w-full" variant="outline" onClick={() => window.open('http://localhost:5555', '_blank')}>
-                Open Prisma Studio
-              </Button>
+              {/* Prisma Studio only works in local development */}
+              {process.env.NODE_ENV === 'development' && (
+                <Button className="w-full" variant="outline" onClick={() => window.open('http://localhost:5555', '_blank')}>
+                  Open Prisma Studio
+                </Button>
+              )}
             </CardContent>
           </Card>
 

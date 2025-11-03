@@ -223,56 +223,69 @@ export const recalculateStandings = async (req: Request, res: Response) => {
       return b.goalsFor - a.goalsFor;
     });
 
-    // Assign positions and create entries
-    for (let i = 0; i < standings.length; i++) {
-      await prisma.table.create({
-        data: {
-          ...standings[i],
-          position: i + 1
-        }
-      });
-    }
+    // Assign positions and create all entries in one batch operation
+    const tableData = standings.map((standing, index) => ({
+      ...standing,
+      position: index + 1,
+      form: '' // Will be updated in next step
+    }));
 
-    // Calculate and update form for each team
-    for (const standing of standings) {
-      const recentMatches = await prisma.match.findMany({
-        where: {
-          leagueId: parseInt(leagueId),
-          status: 'FINISHED',
-          OR: [
-            { homeTeamId: standing.teamId },
-            { awayTeamId: standing.teamId }
-          ],
-          homeScore: { not: null },
-          awayScore: { not: null }
-        },
-        orderBy: { matchDate: 'desc' },
-        take: 5
-      });
+    await prisma.table.createMany({
+      data: tableData
+    });
 
-      const formString = recentMatches
-        .reverse()
-        .map((m) => {
-          const isHome = m.homeTeamId === standing.teamId;
-          const teamScore = isHome ? m.homeScore! : m.awayScore!;
-          const opponentScore = isHome ? m.awayScore! : m.homeScore!;
-
-          if (teamScore > opponentScore) return 'W';
-          if (teamScore < opponentScore) return 'L';
-          return 'D';
-        })
-        .join('');
-
-      await prisma.table.update({
-        where: {
-          leagueId_teamId: {
+    // Calculate form for all teams in parallel (batch queries)
+    const formUpdates = await Promise.all(
+      standings.map(async (standing) => {
+        const recentMatches = await prisma.match.findMany({
+          where: {
             leagueId: parseInt(leagueId),
-            teamId: standing.teamId
-          }
-        },
-        data: { form: formString }
-      });
-    }
+            status: 'FINISHED',
+            OR: [
+              { homeTeamId: standing.teamId },
+              { awayTeamId: standing.teamId }
+            ],
+            homeScore: { not: null },
+            awayScore: { not: null }
+          },
+          orderBy: { matchDate: 'desc' },
+          take: 5
+        });
+
+        const formString = recentMatches
+          .reverse()
+          .map((m) => {
+            const isHome = m.homeTeamId === standing.teamId;
+            const teamScore = isHome ? m.homeScore! : m.awayScore!;
+            const opponentScore = isHome ? m.awayScore! : m.homeScore!;
+
+            if (teamScore > opponentScore) return 'W';
+            if (teamScore < opponentScore) return 'L';
+            return 'D';
+          })
+          .join('');
+
+        return {
+          teamId: standing.teamId,
+          form: formString
+        };
+      })
+    );
+
+    // Update form for all teams in parallel
+    await Promise.all(
+      formUpdates.map((update) =>
+        prisma.table.update({
+          where: {
+            leagueId_teamId: {
+              leagueId: parseInt(leagueId),
+              teamId: update.teamId
+            }
+          },
+          data: { form: update.form }
+        })
+      )
+    );
 
     // Mark all matches as synced
     await prisma.match.updateMany({
