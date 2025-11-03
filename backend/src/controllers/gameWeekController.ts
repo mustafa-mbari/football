@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../config/database';
 
 // Sync all matches to their gameweeks based on weekNumber AND recalculate all tables from ALL finished matches
 export const syncMatchesToGameWeeks = async (req: Request, res: Response) => {

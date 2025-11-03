@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler';
-import { startSessionCleanupTask } from './utils/sessionCleanup';
 
 // Import routes
 import authRoutes from './routes/authRoutes';
@@ -22,6 +21,7 @@ import groupRoutes from './routes/groupRoutes';
 import changeRequestRoutes from './routes/changeRequestRoutes';
 import footballDataApiRoutes from './routes/footballDataApiRoutes';
 import exportRoutes from './routes/exportRoutes';
+import cronRoutes from './routes/cronRoutes';
 
 
 dotenv.config();
@@ -30,19 +30,35 @@ const app: Application = express();
 const PORT = process.env.PORT || 7070;
 
 // Middleware
-// Allow both localhost and local network access for development
-const allowedOrigins = [
-  'http://localhost:8080',
-  'http://192.168.178.24:8080',
-  'http://127.0.0.1:8080'
-];
+// CORS configuration for development and production
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [
+      process.env.FRONTEND_URL || '',
+      // Allow Vercel preview deployments
+      /^https:\/\/.*\.vercel\.app$/
+    ]
+  : [
+      'http://localhost:8080',
+      'http://192.168.178.24:8080',
+      'http://127.0.0.1:8080'
+    ];
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin matches allowed origins
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return allowed === origin;
+      } else if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -71,6 +87,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/change-requests', changeRequestRoutes);
 app.use('/api/football-data', footballDataApiRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/cron', cronRoutes);
 
 
 // Health check
@@ -83,7 +100,4 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
-
-  // Start periodic session cleanup (runs every hour)
-  startSessionCleanupTask();
 });

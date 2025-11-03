@@ -1,4 +1,5 @@
 import express from 'express';
+import prisma from '../config/database';
 import {
   getAllGameWeeks,
   getGameWeeksByLeague,
@@ -31,9 +32,6 @@ const optionalAuth = async (req: any, _res: any, next: any) => {
     }
 
     // Try to authenticate, but don't fail if it doesn't work
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-
     const session = await prisma.session.findUnique({
       where: { token: sessionToken },
       include: { user: true }
@@ -46,7 +44,6 @@ const optionalAuth = async (req: any, _res: any, next: any) => {
       req.sessionId = session.id;
     }
 
-    await prisma.$disconnect();
     next();
   } catch (error) {
     // On error, just continue without authentication

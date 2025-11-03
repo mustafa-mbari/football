@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../config/database';
 
 // Sync a single match - update standings, stats, predictions
 export const syncMatch = async (req: Request, res: Response) => {

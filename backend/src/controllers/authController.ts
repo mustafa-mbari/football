@@ -143,10 +143,12 @@ export const login = async (req: Request, res: Response) => {
     });
 
     // Set session cookie
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('sessionToken', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction, // Always true in production (HTTPS required)
+      sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-domain in production
+      domain: isProduction && process.env.COOKIE_DOMAIN ? process.env.COOKIE_DOMAIN : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
