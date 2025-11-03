@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, getApiUrl } from '@/lib/api';
 import LeagueSelector from '@/components/LeagueSelector';
 import AddGameWeeksModal from '@/components/admin/AddGameWeeksModal';
 
@@ -134,7 +134,7 @@ function GameWeeksContent() {
 
     setSyncing(true);
     try {
-      const response = await fetch('${getApiUrl()}/api/gameweeks/sync-matches', {
+      const response = await fetch(`${getApiUrl()}/api/gameweeks/sync-matches`, {
         method: 'POST',
         credentials: 'include',
         headers: {
