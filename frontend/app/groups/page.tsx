@@ -108,15 +108,12 @@ function GroupsContent() {
 
   const fetchTeamsForLeague = async (leagueId: number | null) => {
     try {
-      const url = leagueId
-        ? `http://localhost:7070/api/teams?leagueId=${leagueId}`
-        : `http://localhost:7070/api/teams`;
+      const { api } = await import('@/lib/api');
+      const response = leagueId
+        ? await api.get(`/teams?leagueId=${leagueId}`)
+        : await api.get('/teams');
 
-      const response = await fetch(url, {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      setTeams(data.data || []);
+      setTeams(response.data.data || []);
     } catch (error) {
       console.error('Error fetching teams:', error);
     }

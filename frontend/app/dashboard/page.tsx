@@ -215,10 +215,7 @@ function DashboardContent() {
     try {
       const publicGroup = publicGroups.find(g => g.leagueId === leagueId);
       if (publicGroup) {
-        // Recalculate points first
-        await groupsApi.recalculatePoints(publicGroup.id);
-
-        // Then fetch leaderboard
+        // Fetch leaderboard directly - points are updated automatically when matches finish
         const response = await groupsApi.getLeaderboard(
           publicGroup.id,
           leagueId,
@@ -233,10 +230,7 @@ function DashboardContent() {
 
   const fetchPrivateLeaderboard = async (groupId: number) => {
     try {
-      // Recalculate points first
-      await groupsApi.recalculatePoints(groupId);
-
-      // Then fetch leaderboard
+      // Fetch leaderboard directly - points are updated automatically when matches finish
       const response = await groupsApi.getLeaderboard(groupId);
       setPrivateLeaderboard(response.data.data);
     } catch (error) {
