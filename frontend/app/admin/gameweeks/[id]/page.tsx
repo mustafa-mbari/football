@@ -296,12 +296,12 @@ export default function GameWeekDetailPage() {
         const data = await response.json();
         alert(data.message || 'Standings recalculated successfully!');
       } else {
-        const data = await response.json();
-        alert(data.message || 'Failed to recalculate standings');
+        const data = await response.json().catch(() => ({ message: 'Unknown error' }));
+        alert(`Failed to recalculate standings (${response.status}):\n${data.message}`);
       }
-    } catch (error) {
-      alert('Failed to recalculate standings');
-      console.error(error);
+    } catch (error: any) {
+      alert(`Failed to recalculate standings:\n${error.message || error}`);
+      console.error('Recalculate standings error:', error);
     } finally {
       setRecalculatingStandings(false);
     }
