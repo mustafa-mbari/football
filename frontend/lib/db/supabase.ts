@@ -7,22 +7,35 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Helper function to get environment variable with fallback
-function getEnvVar(key: string, required = true): string {
+// Helper function to get environment variable with validation
+function getEnvVar(key: string, fallback: string = ''): string {
   const value = process.env[key];
 
-  // During build time, environment variables might not be available
-  // Only throw if we're in runtime (not build)
-  if (!value && required && typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
-    console.warn(`Warning: Missing ${key} environment variable`);
+  if (!value && typeof window === 'undefined') {
+    // Only warn in development, not during build
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`Warning: Missing ${key} environment variable`);
+    }
+    return fallback;
   }
 
-  return value || '';
+  return value || fallback;
 }
 
-const supabaseUrl = getEnvVar('NEXT_PUBLIC_SUPABASE_URL');
-const supabaseServiceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
-const supabaseAnonKey = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+// Use dummy values during build to prevent initialization errors
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
+const supabaseUrl = isBuildTime
+  ? 'https://dummy.supabase.co'
+  : getEnvVar('NEXT_PUBLIC_SUPABASE_URL', 'https://dummy.supabase.co');
+
+const supabaseServiceKey = isBuildTime
+  ? 'dummy-service-key'
+  : getEnvVar('SUPABASE_SERVICE_ROLE_KEY', 'dummy-service-key');
+
+const supabaseAnonKey = isBuildTime
+  ? 'dummy-anon-key'
+  : getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'dummy-anon-key');
 
 /**
  * Supabase client with service role key
