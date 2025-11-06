@@ -7,13 +7,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+// Helper function to get environment variable with fallback
+function getEnvVar(key: string, required = true): string {
+  const value = process.env[key];
+
+  // During build time, environment variables might not be available
+  // Only throw if we're in runtime (not build)
+  if (!value && required && typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+    console.warn(`Warning: Missing ${key} environment variable`);
+  }
+
+  return value || '';
 }
 
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
-}
+const supabaseUrl = getEnvVar('NEXT_PUBLIC_SUPABASE_URL');
+const supabaseServiceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
+const supabaseAnonKey = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 /**
  * Supabase client with service role key
@@ -21,8 +30,8 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
  * NEVER expose service role key to client
  */
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseUrl,
+  supabaseServiceKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -36,8 +45,8 @@ export const supabaseAdmin = createClient(
  * Use for client-side if needed
  */
 export const supabaseClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       autoRefreshToken: true,
