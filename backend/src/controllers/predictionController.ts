@@ -126,21 +126,59 @@ export const createPrediction = async (req: Request, res: Response) => {
 export const getUserPredictions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
+    const { leagueId, limit = 50 } = req.query;
 
+    // OPTIMIZED: Add filters and limit results
     const predictions = await prisma.prediction.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(leagueId && {
+          match: {
+            leagueId: parseInt(leagueId as string)
+          }
+        })
+      },
       include: {
         match: {
-          include: {
-            homeTeam: true,
-            awayTeam: true,
-            league: true
+          select: {
+            id: true,
+            matchDate: true,
+            homeScore: true,
+            awayScore: true,
+            status: true,
+            weekNumber: true,
+            homeTeam: {
+              select: {
+                id: true,
+                name: true,
+                shortName: true,
+                logoUrl: true,
+                code: true
+              }
+            },
+            awayTeam: {
+              select: {
+                id: true,
+                name: true,
+                shortName: true,
+                logoUrl: true,
+                code: true
+              }
+            },
+            league: {
+              select: {
+                id: true,
+                name: true,
+                code: true
+              }
+            }
           }
         }
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      take: parseInt(limit as string)
     });
 
     res.json({
@@ -159,15 +197,27 @@ export const getMatchPredictions = async (req: Request, res: Response) => {
   try {
     const { matchId } = req.params;
 
+    // OPTIMIZED: Select only necessary fields
     const predictions = await prisma.prediction.findMany({
       where: { matchId: parseInt(matchId) },
-      include: {
+      select: {
+        id: true,
+        predictedHomeScore: true,
+        predictedAwayScore: true,
+        totalPoints: true,
+        isProcessed: true,
+        status: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
-            username: true
+            username: true,
+            avatar: true
           }
         }
+      },
+      orderBy: {
+        totalPoints: 'desc'
       }
     });
 

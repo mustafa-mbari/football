@@ -5,44 +5,65 @@ export const getLeaderboard = async (req: Request, res: Response) => {
   try {
     const { leagueId } = req.query;
 
-    // Get all users with their total points
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        predictions: {
-          where: leagueId ? {
-            match: {
-              leagueId: parseInt(leagueId as string)
-            }
-          } : undefined,
-          select: {
-            totalPoints: true
-          }
-        }
-      }
-    });
+    // OPTIMIZED: Use aggregation query instead of loading all predictions
+    let leaderboardQuery;
 
-    // Calculate total points for each user
-    const leaderboard = users
-      .map(user => ({
-        id: user.id,
-        username: user.username,
-        totalPoints: user.predictions.reduce((sum, pred) => sum + (pred.totalPoints || 0), 0),
-        totalPredictions: user.predictions.length
-      }))
-      .filter(user => user.totalPredictions > 0) // Only show users who have made predictions
-      .sort((a, b) => b.totalPoints - a.totalPoints)
-      .map((user, index) => ({
-        rank: index + 1,
-        ...user
-      }));
+    if (leagueId) {
+      // League-specific leaderboard: aggregate points from predictions
+      leaderboardQuery = await prisma.$queryRaw<Array<{
+        id: number;
+        username: string;
+        totalPoints: bigint;
+        totalPredictions: bigint;
+      }>>`
+        SELECT
+          u.id,
+          u.username,
+          COALESCE(SUM(p."totalPoints"), 0) as "totalPoints",
+          COUNT(p.id) as "totalPredictions"
+        FROM "User" u
+        LEFT JOIN "Prediction" p ON u.id = p."userId"
+        LEFT JOIN "Match" m ON p."matchId" = m.id
+        WHERE m."leagueId" = ${parseInt(leagueId as string)}
+        GROUP BY u.id, u.username
+        HAVING COUNT(p.id) > 0
+        ORDER BY "totalPoints" DESC
+      `;
+    } else {
+      // Global leaderboard: use pre-calculated totalPoints from User table
+      leaderboardQuery = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          totalPredictions: { gt: 0 }
+        },
+        select: {
+          id: true,
+          username: true,
+          totalPoints: true,
+          totalPredictions: true
+        },
+        orderBy: {
+          totalPoints: 'desc'
+        },
+        take: 100 // Limit to top 100 for performance
+      });
+    }
+
+    // Format leaderboard with ranks
+    const leaderboard = (leaderboardQuery as any[]).map((user, index) => ({
+      rank: index + 1,
+      id: user.id,
+      username: user.username,
+      totalPoints: Number(user.totalPoints),
+      totalPredictions: Number(user.totalPredictions)
+    }));
 
     res.json({
       success: true,
       data: leaderboard
     });
   } catch (error: any) {
+    console.error('Leaderboard error:', error);
     res.status(500).json({
       success: false,
       message: error.message

@@ -3,22 +3,53 @@ import prisma from '../config/database';
 
 export const getAllMatches = async (req: Request, res: Response) => {
   try {
-    const { leagueId, status } = req.query;
+    const { leagueId, status, limit = 100 } = req.query;
 
     const where: any = {};
     if (leagueId) where.leagueId = parseInt(leagueId as string);
     if (status) where.status = status as string;
 
+    // OPTIMIZED: Select only necessary fields and add limit
     const matches = await prisma.match.findMany({
       where,
-      include: {
-        homeTeam: true,
-        awayTeam: true,
-        league: true
+      select: {
+        id: true,
+        matchDate: true,
+        weekNumber: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+        isPredictionLocked: true,
+        homeTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true
+          }
+        },
+        awayTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true
+          }
+        },
+        league: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
       },
       orderBy: {
         matchDate: 'asc'
-      }
+      },
+      take: parseInt(limit as string)
     });
 
     res.json({
@@ -37,21 +68,60 @@ export const getMatchById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    // OPTIMIZED: Select only necessary fields
     const match = await prisma.match.findUnique({
       where: { id: parseInt(id) },
-      include: {
-        homeTeam: true,
-        awayTeam: true,
-        league: true,
+      select: {
+        id: true,
+        matchDate: true,
+        weekNumber: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+        isPredictionLocked: true,
+        isSynced: true,
+        homeTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true
+          }
+        },
+        awayTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true
+          }
+        },
+        league: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            season: true
+          }
+        },
         predictions: {
-          include: {
+          select: {
+            id: true,
+            predictedHomeScore: true,
+            predictedAwayScore: true,
+            totalPoints: true,
+            isProcessed: true,
             user: {
               select: {
                 id: true,
-                username: true
+                username: true,
+                avatar: true
               }
             }
-          }
+          },
+          take: 50 // Limit predictions to prevent huge payloads
         }
       }
     });

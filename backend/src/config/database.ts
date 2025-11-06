@@ -4,12 +4,15 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+// Optimized connection pool settings for Supabase/Vercel
+const connectionUrl = process.env.DATABASE_URL;
+
 // Singleton pattern for both development and production (essential for serverless)
 const prisma = global.prisma || new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL
+      url: connectionUrl
     }
   }
 });

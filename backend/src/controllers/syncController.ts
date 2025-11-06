@@ -265,7 +265,7 @@ export const syncMatch = async (req: Request, res: Response) => {
     await updateTeamForm(match.homeTeamId);
     await updateTeamForm(match.awayTeamId);
 
-    // 5. Recalculate positions
+    // 5. Recalculate positions (optimized with batch update)
     const allStandings = await prisma.table.findMany({
       where: { leagueId: match.leagueId },
       orderBy: [
@@ -275,70 +275,74 @@ export const syncMatch = async (req: Request, res: Response) => {
       ]
     });
 
-    // Update positions
-    for (let i = 0; i < allStandings.length; i++) {
-      await prisma.table.update({
-        where: { id: allStandings[i].id },
-        data: { position: i + 1 }
-      });
-    }
+    // Batch update positions - execute in parallel
+    const positionUpdates = allStandings.map((standing, index) =>
+      prisma.table.update({
+        where: { id: standing.id },
+        data: { position: index + 1 }
+      })
+    );
+    await Promise.all(positionUpdates);
 
-    // 6. Process predictions and award points
+    // 6. Process predictions and award points (optimized with batch updates)
     let processedPredictions = 0;
     const userUpdates: { [key: number]: { points: number; correct: boolean } } = {};
 
-    for (const prediction of match.predictions) {
-      if (prediction.isProcessed) continue;
+    // Calculate points for all predictions first
+    const predictionUpdates = match.predictions
+      .filter(prediction => !prediction.isProcessed)
+      .map(prediction => {
+        let resultPoints = 0;
+        let scorePoints = 0;
+        let totalPoints = 0;
 
-      let resultPoints = 0;
-      let scorePoints = 0;
-      let totalPoints = 0;
-
-      // Exact score match
-      if (prediction.predictedHomeScore === match.homeScore &&
-          prediction.predictedAwayScore === match.awayScore) {
-        scorePoints = 5;
-        resultPoints = 3;
-        totalPoints = 8;
-      }
-      // Correct result but not exact score
-      else {
-        const predictedHomeWin = prediction.predictedHomeScore > prediction.predictedAwayScore;
-        const predictedAwayWin = prediction.predictedAwayScore > prediction.predictedHomeScore;
-        const predictedDraw = prediction.predictedHomeScore === prediction.predictedAwayScore;
-
-        if ((predictedHomeWin && homeWin) || (predictedAwayWin && awayWin) || (predictedDraw && draw)) {
+        // Exact score match
+        if (prediction.predictedHomeScore === match.homeScore &&
+            prediction.predictedAwayScore === match.awayScore) {
+          scorePoints = 5;
           resultPoints = 3;
-          totalPoints = 3;
+          totalPoints = 8;
         }
-      }
+        // Correct result but not exact score
+        else {
+          const predictedHomeWin = prediction.predictedHomeScore > prediction.predictedAwayScore;
+          const predictedAwayWin = prediction.predictedAwayScore > prediction.predictedHomeScore;
+          const predictedDraw = prediction.predictedHomeScore === prediction.predictedAwayScore;
 
-      // Update prediction
-      await prisma.prediction.update({
-        where: { id: prediction.id },
-        data: {
-          resultPoints,
-          scorePoints,
-          totalPoints,
-          isProcessed: true
+          if ((predictedHomeWin && homeWin) || (predictedAwayWin && awayWin) || (predictedDraw && draw)) {
+            resultPoints = 3;
+            totalPoints = 3;
+          }
         }
+
+        // Track user points
+        if (!userUpdates[prediction.userId]) {
+          userUpdates[prediction.userId] = { points: 0, correct: false };
+        }
+        userUpdates[prediction.userId].points += totalPoints;
+        if (totalPoints > 0) {
+          userUpdates[prediction.userId].correct = true;
+        }
+
+        processedPredictions++;
+
+        return prisma.prediction.update({
+          where: { id: prediction.id },
+          data: {
+            resultPoints,
+            scorePoints,
+            totalPoints,
+            isProcessed: true
+          }
+        });
       });
 
-      // Track user points
-      if (!userUpdates[prediction.userId]) {
-        userUpdates[prediction.userId] = { points: 0, correct: false };
-      }
-      userUpdates[prediction.userId].points += totalPoints;
-      if (totalPoints > 0) {
-        userUpdates[prediction.userId].correct = true;
-      }
+    // Batch execute prediction updates
+    await Promise.all(predictionUpdates);
 
-      processedPredictions++;
-    }
-
-    // 7. Update user statistics
-    for (const [userId, data] of Object.entries(userUpdates)) {
-      await prisma.user.update({
+    // 7. Update user statistics (optimized with batch updates)
+    const userUpdatePromises = Object.entries(userUpdates).map(([userId, data]) =>
+      prisma.user.update({
         where: { id: parseInt(userId) },
         data: {
           totalPoints: { increment: data.points },
@@ -346,8 +350,9 @@ export const syncMatch = async (req: Request, res: Response) => {
           totalPredictions: { increment: 1 },
           correctPredictions: data.correct ? { increment: 1 } : undefined
         }
-      });
-    }
+      })
+    );
+    await Promise.all(userUpdatePromises);
 
     // 8. Mark match as synced
     await prisma.match.update({
@@ -742,51 +747,55 @@ export const syncGameWeek = async (req: Request, res: Response) => {
           });
         }
 
-        // Process predictions
+        // Process predictions (optimized with batch updates)
         const userUpdates: { [key: number]: { points: number; correct: boolean } } = {};
 
-        for (const prediction of match.predictions) {
-          if (prediction.isProcessed) continue;
+        // Calculate points and prepare updates
+        const predictionUpdatePromises = match.predictions
+          .filter(prediction => !prediction.isProcessed)
+          .map(prediction => {
+            let resultPoints = 0;
+            let scorePoints = 0;
+            let totalPoints = 0;
 
-          let resultPoints = 0;
-          let scorePoints = 0;
-          let totalPoints = 0;
-
-          if (prediction.predictedHomeScore === match.homeScore &&
-              prediction.predictedAwayScore === match.awayScore) {
-            scorePoints = 5;
-            resultPoints = 3;
-            totalPoints = 8;
-          } else {
-            const predictedHomeWin = prediction.predictedHomeScore > prediction.predictedAwayScore;
-            const predictedAwayWin = prediction.predictedAwayScore > prediction.predictedHomeScore;
-            const predictedDraw = prediction.predictedHomeScore === prediction.predictedAwayScore;
-
-            if ((predictedHomeWin && homeWin) || (predictedAwayWin && awayWin) || (predictedDraw && draw)) {
+            if (prediction.predictedHomeScore === match.homeScore &&
+                prediction.predictedAwayScore === match.awayScore) {
+              scorePoints = 5;
               resultPoints = 3;
-              totalPoints = 3;
-            }
-          }
+              totalPoints = 8;
+            } else {
+              const predictedHomeWin = prediction.predictedHomeScore > prediction.predictedAwayScore;
+              const predictedAwayWin = prediction.predictedAwayScore > prediction.predictedHomeScore;
+              const predictedDraw = prediction.predictedHomeScore === prediction.predictedAwayScore;
 
-          await prisma.prediction.update({
-            where: { id: prediction.id },
-            data: { resultPoints, scorePoints, totalPoints, isProcessed: true }
+              if ((predictedHomeWin && homeWin) || (predictedAwayWin && awayWin) || (predictedDraw && draw)) {
+                resultPoints = 3;
+                totalPoints = 3;
+              }
+            }
+
+            if (!userUpdates[prediction.userId]) {
+              userUpdates[prediction.userId] = { points: 0, correct: false };
+            }
+            userUpdates[prediction.userId].points += totalPoints;
+            if (totalPoints > 0) {
+              userUpdates[prediction.userId].correct = true;
+            }
+
+            totalPredictionsProcessed++;
+
+            return prisma.prediction.update({
+              where: { id: prediction.id },
+              data: { resultPoints, scorePoints, totalPoints, isProcessed: true }
+            });
           });
 
-          if (!userUpdates[prediction.userId]) {
-            userUpdates[prediction.userId] = { points: 0, correct: false };
-          }
-          userUpdates[prediction.userId].points += totalPoints;
-          if (totalPoints > 0) {
-            userUpdates[prediction.userId].correct = true;
-          }
+        // Batch execute prediction updates
+        await Promise.all(predictionUpdatePromises);
 
-          totalPredictionsProcessed++;
-        }
-
-        // Update user statistics
-        for (const [userId, data] of Object.entries(userUpdates)) {
-          await prisma.user.update({
+        // Update user statistics (batch updates)
+        const userUpdatePromises = Object.entries(userUpdates).map(([userId, data]) =>
+          prisma.user.update({
             where: { id: parseInt(userId) },
             data: {
               totalPoints: { increment: data.points },
@@ -794,8 +803,9 @@ export const syncGameWeek = async (req: Request, res: Response) => {
               totalPredictions: { increment: 1 },
               correctPredictions: data.correct ? { increment: 1 } : undefined
             }
-          });
-        }
+          })
+        );
+        await Promise.all(userUpdatePromises);
 
         // Mark match as synced
         await prisma.match.update({
@@ -850,17 +860,16 @@ export const syncGameWeek = async (req: Request, res: Response) => {
       });
     };
 
-    // Get all teams in standings and update their form
+    // Get all teams in standings and update their form (optimized with parallel execution)
     const allTeams = await prisma.table.findMany({
       where: { leagueId: gameWeek.leagueId },
       select: { teamId: true }
     });
 
-    for (const team of allTeams) {
-      await updateTeamForm(team.teamId);
-    }
+    // Update form for all teams in parallel
+    await Promise.all(allTeams.map(team => updateTeamForm(team.teamId)));
 
-    // Recalculate standings positions
+    // Recalculate standings positions (optimized with batch update)
     const allStandings = await prisma.table.findMany({
       where: { leagueId: gameWeek.leagueId },
       orderBy: [
@@ -870,12 +879,14 @@ export const syncGameWeek = async (req: Request, res: Response) => {
       ]
     });
 
-    for (let i = 0; i < allStandings.length; i++) {
-      await prisma.table.update({
-        where: { id: allStandings[i].id },
-        data: { position: i + 1 }
-      });
-    }
+    // Batch update positions - execute in parallel
+    const positionUpdates = allStandings.map((standing, index) =>
+      prisma.table.update({
+        where: { id: standing.id },
+        data: { position: index + 1 }
+      })
+    );
+    await Promise.all(positionUpdates);
 
     res.json({
       success: true,
