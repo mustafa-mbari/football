@@ -1,7 +1,23 @@
 import axios from 'axios';
 
-// Determine API URL based on the current host
+/**
+ * API Configuration for Next.js API Routes Migration
+ *
+ * Toggle between Next.js API routes and Express backend
+ * Set USE_NEXTJS_API_ROUTES=false to use old Express backend
+ */
+
+// Feature flag: Use Next.js API routes by default
+const USE_NEXTJS_API_ROUTES = process.env.NEXT_PUBLIC_USE_NEXTJS_API !== 'false';
+
+// Determine API URL based on configuration
 const getApiBaseUrl = () => {
+  // If using Next.js API routes (NEW - 10-100x faster)
+  if (USE_NEXTJS_API_ROUTES) {
+    return '/api'; // Next.js API routes (same origin)
+  }
+
+  // Fallback to Express backend (OLD)
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     // If accessing via network IP, use that IP for API calls
@@ -13,6 +29,9 @@ const getApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+console.log(`🚀 API Mode: ${USE_NEXTJS_API_ROUTES ? 'Next.js API Routes (Edge/Node)' : 'Express Backend'}`);
+console.log(`📡 API Base URL: ${API_BASE_URL}`);
 
 // Export helper to get full API URL (without /api suffix)
 export const getApiUrl = () => {
