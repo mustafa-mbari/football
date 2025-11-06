@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 // ✅ EDGE RUNTIME - Perfect for leaderboards (high traffic, read-only)
 export const runtime = 'edge';
 
 // ✅ Revalidate every 5 minutes (leaderboards change less frequently)
 export const revalidate = 300;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * GET /api/leaderboard
@@ -35,7 +30,7 @@ export async function GET(request: NextRequest) {
     if (leagueId) {
       // ✅ League-specific leaderboard using database function
       // This avoids loading all predictions into memory
-      const { data, error } = await supabase.rpc('get_league_leaderboard', {
+      const { data, error } = await supabaseAdmin.rpc('get_league_leaderboard', {
         p_league_id: parseInt(leagueId),
         p_limit: limit
       });
@@ -45,7 +40,7 @@ export async function GET(request: NextRequest) {
         console.warn('RPC function not found, using fallback query');
 
         // Fallback: Raw SQL query
-        const { data: fallbackData, error: fallbackError } = await supabase.rpc('execute_sql', {
+        const { data: fallbackData, error: fallbackError } = await supabaseAdmin.rpc('execute_sql', {
           query: `
             SELECT
               ROW_NUMBER() OVER (ORDER BY SUM(p."totalPoints") DESC) as rank,
@@ -73,7 +68,7 @@ export async function GET(request: NextRequest) {
     } else {
       // ✅ Global leaderboard - Use pre-calculated User.totalPoints
       // Much faster than aggregating predictions
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('User')
         .select('id, username, avatar, totalPoints, totalPredictions')
         .gt('totalPredictions', 0)

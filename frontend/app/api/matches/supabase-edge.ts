@@ -6,16 +6,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/db/supabase';
 
 export const runtime = 'edge';
 export const revalidate = 60;
-
-// Initialize Supabase client (works on Edge!)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for server-side
-);
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +22,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // ✅ Build Supabase query with selective fields
-    let query = supabase
+    let query = supabaseAdmin
       .from('Match')
       .select(
         `
