@@ -56,8 +56,9 @@ model User {
   updatedAt         DateTime           @updatedAt
 
   @@index([email])
-  @@index([totalPoints])
+  @@index([totalPoints(sort: Desc)])
   @@index([rank])
+  @@index([isActive, totalPoints(sort: Desc)])
 }
 
 model Session {
@@ -212,6 +213,10 @@ model Match {
   @@index([matchDate])
   @@index([status])
   @@index([weekNumber])
+  @@index([leagueId, status])
+  @@index([status, homeScore, awayScore])
+  @@index([homeTeamId, status])
+  @@index([awayTeamId, status])
   @@unique([homeTeamId, awayTeamId, matchDate])
 }
 
@@ -247,6 +252,8 @@ model Prediction {
   @@index([userId])
   @@index([matchId])
   @@index([isProcessed])
+  @@index([userId, isProcessed])
+  @@index([matchId, isProcessed])
 }
 
 // ==================== TABLES ====================
@@ -423,6 +430,8 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
+  @@index([groupId, totalPoints(sort: Desc)])
+  @@index([userId, groupId])
 }
 
 model GroupChangeRequest {
