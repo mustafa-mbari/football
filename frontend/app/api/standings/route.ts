@@ -2,84 +2,139 @@
  * GET /api/standings
  *
  * Fetch league standings/table
- * Edge runtime with caching
+ * - Without leagueId: Returns all leagues with their standings
+ * - With leagueId: Returns standings for specific league
+ * Node runtime required for Prisma
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { prisma } from '@/lib/db/prisma';
 
-export const runtime = 'edge';
-export const revalidate = 120; // 2 minutes - updates more frequently
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const leagueId = searchParams.get('leagueId');
 
-    if (!leagueId) {
+    // If leagueId is provided, return standings for that specific league
+    if (leagueId) {
+      const standings = await prisma.table.findMany({
+        where: { leagueId: parseInt(leagueId) },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              code: true,
+              logoUrl: true,
+              primaryColor: true,
+            },
+          },
+        },
+        orderBy: [
+          { points: 'desc' },
+          { goalDifference: 'desc' },
+          { goalsFor: 'desc' },
+        ],
+      });
+
+      // Add position/rank to each team
+      const standingsWithRank = standings.map((standing, index) => ({
+        ...standing,
+        position: index + 1,
+      }));
+
       return NextResponse.json(
-        { success: false, error: 'leagueId is required' },
-        { status: 400 }
+        {
+          success: true,
+          data: standingsWithRank,
+        },
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+          },
+        }
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('Table')
-      .select(`
-        id,
-        position,
-        played,
-        won,
-        drawn,
-        lost,
-        goalsFor,
-        goalsAgainst,
-        goalDifference,
-        points,
-        form,
-        team:teamId (
-          id,
-          name,
-          shortName,
-          code,
-          logoUrl
-        )
-      `)
-      .eq('leagueId', parseInt(leagueId))
-      .order('position', { ascending: true });
+    // Otherwise, return all leagues with their standings
+    const leagues = await prisma.league.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        country: true,
+        season: true,
+        logoUrl: true,
+      },
+    });
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
-    }
+    // Get all standings for all leagues at once
+    const allStandings = await prisma.table.findMany({
+      where: {
+        leagueId: {
+          in: leagues.map((l) => l.id),
+        },
+      },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+            primaryColor: true,
+          },
+        },
+      },
+      orderBy: [
+        { leagueId: 'asc' },
+        { points: 'desc' },
+        { goalDifference: 'desc' },
+        { goalsFor: 'desc' },
+      ],
+    });
+
+    // Group standings by league
+    const standingsByLeague = leagues.map((league) => {
+      const leagueStandings = allStandings
+        .filter((s) => s.leagueId === league.id)
+        .map((standing, index) => ({
+          ...standing,
+          position: index + 1,
+        }));
+
+      return {
+        league,
+        standings: leagueStandings,
+      };
+    });
 
     return NextResponse.json(
       {
         success: true,
-        data,
-        meta: {
-          leagueId: parseInt(leagueId),
-          cached: true,
-          timestamp: new Date().toISOString(),
-          runtime: 'edge'
-        }
+        data: standingsByLeague,
       },
       {
         status: 200,
         headers: {
-          // Moderate caching - standings update frequently during match days
           'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
-          'CDN-Cache-Control': 'public, s-maxage=180',
-        }
+        },
       }
     );
   } catch (error: any) {
     console.error('Error fetching standings:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        error: 'Failed to fetch standings',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      },
       { status: 500 }
     );
   }
