@@ -8,7 +8,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import LeagueSelector from '@/components/LeagueSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { standingsApi } from '@/lib/api';
+import { standingsApi, getApiUrl } from '@/lib/api';
 
 interface Team {
   id: number;
