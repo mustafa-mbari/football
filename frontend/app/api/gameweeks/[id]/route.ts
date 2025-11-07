@@ -1,5 +1,6 @@
 /**
  * GET /api/gameweeks/[id] - Get gameweek details with matches
+ * PATCH /api/gameweeks/[id] - Update gameweek (admin only)
  *
  * Returns gameweek with:
  * - League info
@@ -8,14 +9,15 @@
  * - Table snapshots
  * - Match counts
  *
- * Auth optional (includes user predictions if authenticated)
+ * Auth optional for GET (includes user predictions if authenticated)
+ * Auth required (admin) for PATCH
  * Node runtime for Prisma
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/session';
-import { handleError, errorResponse } from '@/lib/middleware/auth';
+import { handleError, errorResponse, verifyAdmin } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,11 +113,65 @@ export async function GET(
       {
         status: 200,
         headers: {
-          'Cache-Control': userId ? 'private, max-age=60' : 'public, s-maxage=300, stale-while-revalidate=600',
+          // No caching for authenticated users to show fresh predictions
+          'Cache-Control': userId ? 'private, no-cache, must-revalidate' : 'public, s-maxage=300, stale-while-revalidate=600',
         },
       }
     );
   } catch (error: any) {
     return handleError(error, 'Failed to fetch gameweek details');
+  }
+}
+
+/**
+ * PATCH /api/gameweeks/[id]
+ * Update gameweek (admin only)
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Verify admin access
+    const authResult = await verifyAdmin();
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { startDate, endDate, status, isCurrent } = body;
+
+    const updateData: any = {};
+    if (startDate !== undefined) updateData.startDate = new Date(startDate);
+    if (endDate !== undefined) updateData.endDate = new Date(endDate);
+    if (status !== undefined) updateData.status = status;
+    if (isCurrent !== undefined) updateData.isCurrent = isCurrent;
+
+    const gameWeek = await prisma.gameWeek.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        league: {
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
+        }
+      }
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: gameWeek,
+        message: 'GameWeek updated successfully'
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  } catch (error: any) {
+    return handleError(error, 'Failed to update gameweek');
   }
 }

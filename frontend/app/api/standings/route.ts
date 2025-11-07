@@ -41,11 +41,61 @@ export async function GET(request: NextRequest) {
         ],
       });
 
-      // Add position/rank to each team
-      const standingsWithRank = standings.map((standing, index) => ({
-        ...standing,
-        position: index + 1,
-      }));
+      // Add position/rank and next opponent to each team
+      const standingsWithRank = await Promise.all(
+        standings.map(async (standing, index) => {
+          // Find next scheduled match for this team
+          const nextMatch = await prisma.match.findFirst({
+            where: {
+              leagueId: parseInt(leagueId),
+              status: 'SCHEDULED',
+              OR: [
+                { homeTeamId: standing.teamId },
+                { awayTeamId: standing.teamId },
+              ],
+            },
+            orderBy: {
+              matchDate: 'asc',
+            },
+            select: {
+              homeTeamId: true,
+              awayTeamId: true,
+              homeTeam: {
+                select: {
+                  id: true,
+                  name: true,
+                  shortName: true,
+                  code: true,
+                  logoUrl: true,
+                  primaryColor: true,
+                },
+              },
+              awayTeam: {
+                select: {
+                  id: true,
+                  name: true,
+                  shortName: true,
+                  code: true,
+                  logoUrl: true,
+                  primaryColor: true,
+                },
+              },
+            },
+          });
+
+          const nextOpponent = nextMatch
+            ? nextMatch.homeTeamId === standing.teamId
+              ? nextMatch.awayTeam
+              : nextMatch.homeTeam
+            : null;
+
+          return {
+            ...standing,
+            position: index + 1,
+            nextOpponent,
+          };
+        })
+      );
 
       return NextResponse.json(
         {
@@ -100,20 +150,72 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Group standings by league
-    const standingsByLeague = leagues.map((league) => {
-      const leagueStandings = allStandings
-        .filter((s) => s.leagueId === league.id)
-        .map((standing, index) => ({
-          ...standing,
-          position: index + 1,
-        }));
+    // Group standings by league and add next opponent
+    const standingsByLeague = await Promise.all(
+      leagues.map(async (league) => {
+        const leagueStandings = allStandings.filter((s) => s.leagueId === league.id);
 
-      return {
-        league,
-        standings: leagueStandings,
-      };
-    });
+        const standingsWithNext = await Promise.all(
+          leagueStandings.map(async (standing, index) => {
+            // Find next scheduled match for this team
+            const nextMatch = await prisma.match.findFirst({
+              where: {
+                leagueId: league.id,
+                status: 'SCHEDULED',
+                OR: [
+                  { homeTeamId: standing.teamId },
+                  { awayTeamId: standing.teamId },
+                ],
+              },
+              orderBy: {
+                matchDate: 'asc',
+              },
+              select: {
+                homeTeamId: true,
+                awayTeamId: true,
+                homeTeam: {
+                  select: {
+                    id: true,
+                    name: true,
+                    shortName: true,
+                    code: true,
+                    logoUrl: true,
+                    primaryColor: true,
+                  },
+                },
+                awayTeam: {
+                  select: {
+                    id: true,
+                    name: true,
+                    shortName: true,
+                    code: true,
+                    logoUrl: true,
+                    primaryColor: true,
+                  },
+                },
+              },
+            });
+
+            const nextOpponent = nextMatch
+              ? nextMatch.homeTeamId === standing.teamId
+                ? nextMatch.awayTeam
+                : nextMatch.homeTeam
+              : null;
+
+            return {
+              ...standing,
+              position: index + 1,
+              nextOpponent,
+            };
+          })
+        );
+
+        return {
+          league,
+          standings: standingsWithNext,
+        };
+      })
+    );
 
     return NextResponse.json(
       {
