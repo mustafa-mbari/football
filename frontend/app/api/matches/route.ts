@@ -1,138 +1,165 @@
+/**
+ * GET /api/matches - Get all matches with filters
+ * POST /api/matches - Create new match (admin only)
+ *
+ * Node runtime required for Prisma
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { prisma } from '@/lib/db/prisma';
+import { verifyAdmin, handleError, successResponse, errorResponse } from '@/lib/middleware/auth';
 
-// ✅ EDGE RUNTIME - 10-100x faster for reads
-export const runtime = 'edge';
-
-// ✅ ISR-like behavior - Revalidate every 60 seconds
-export const revalidate = 60;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/matches
- *
- * Query params:
- * - leagueId: Filter by league
- * - status: Filter by match status (SCHEDULED, LIVE, FINISHED, etc.)
- * - limit: Number of results (default: 50, max: 100)
- * - page: Page number (default: 1)
- *
- * Performance optimizations:
- * - Edge runtime (global distribution, zero cold starts)
- * - Pagination (prevents large payloads)
- * - Selective fields (only essential data)
- * - HTTP caching (CDN + browser caching)
- * - ISR revalidation (updates every 60s)
+ * Query params: leagueId, status, limit, page
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // Parse query parameters with validation
     const leagueId = searchParams.get('leagueId');
     const status = searchParams.get('status');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 200);
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
     const offset = (page - 1) * limit;
 
-    // ✅ Build Supabase query with selective fields
-    let query = supabaseAdmin
-      .from('Match')
-      .select(
-        `
-        id,
-        matchDate,
-        homeScore,
-        awayScore,
-        status,
-        weekNumber,
-        isPredictionLocked,
-        homeTeam:homeTeamId (
-          id,
-          name,
-          shortName,
-          code,
-          logoUrl
-        ),
-        awayTeam:awayTeamId (
-          id,
-          name,
-          shortName,
-          code,
-          logoUrl
-        ),
-        league:leagueId (
-          id,
-          name,
-          code
-        )
-      `,
-        { count: 'exact' }
-      )
-      .order('matchDate', { ascending: true })
-      .range(offset, offset + limit - 1);
+    // Build where clause
+    const where: any = {};
+    if (leagueId) where.leagueId = parseInt(leagueId);
+    if (status) where.status = status.toUpperCase();
 
-    // Apply filters
-    if (leagueId) {
-      query = query.eq('leagueId', parseInt(leagueId));
-    }
-    if (status) {
-      query = query.eq('status', status.toUpperCase());
-    }
+    // Get total count for pagination
+    const total = await prisma.match.count({ where });
 
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
-    }
+    // Fetch matches with optimized fields
+    const matches = await prisma.match.findMany({
+      where,
+      select: {
+        id: true,
+        matchDate: true,
+        weekNumber: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+        isPredictionLocked: true,
+        homeTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+          },
+        },
+        awayTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+          },
+        },
+        league: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+      orderBy: {
+        matchDate: 'asc',
+      },
+      skip: offset,
+      take: limit,
+    });
 
     return NextResponse.json(
       {
         success: true,
-        data,
+        data: matches,
         pagination: {
           page,
           limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit),
-          hasMore: data.length === limit
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasMore: offset + matches.length < total,
         },
-        meta: {
-          cached: true,
-          timestamp: new Date().toISOString(),
-          runtime: 'edge'
-        }
       },
       {
         status: 200,
         headers: {
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
-          'CDN-Cache-Control': 'public, s-maxage=120',
-          'Vercel-CDN-Cache-Control': 'public, s-maxage=300',
-          'Content-Type': 'application/json',
-        }
+        },
       }
     );
   } catch (error: any) {
-    console.error('Error fetching matches:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return handleError(error, 'Failed to fetch matches');
   }
 }
 
-// ✅ OPTIONS for CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+/**
+ * POST /api/matches
+ * Create a new match (admin only)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Verify admin permission
+    const authResult = await verifyAdmin();
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const body = await request.json();
+    const {
+      leagueId,
+      homeTeamId,
+      awayTeamId,
+      matchDate,
+      weekNumber,
+      status,
+      homeScore,
+      awayScore,
+    } = body;
+
+    // Validate required fields
+    if (!leagueId || !homeTeamId || !awayTeamId || !matchDate) {
+      return errorResponse(
+        'Missing required fields: leagueId, homeTeamId, awayTeamId, matchDate',
+        400
+      );
+    }
+
+    // Validate teams are different
+    if (homeTeamId === awayTeamId) {
+      return errorResponse('Home team and away team must be different', 400);
+    }
+
+    // Create match
+    const match = await prisma.match.create({
+      data: {
+        leagueId: parseInt(leagueId),
+        homeTeamId: parseInt(homeTeamId),
+        awayTeamId: parseInt(awayTeamId),
+        matchDate: new Date(matchDate),
+        weekNumber: weekNumber || null,
+        status: status || 'SCHEDULED',
+        homeScore: homeScore !== undefined ? parseInt(homeScore) : null,
+        awayScore: awayScore !== undefined ? parseInt(awayScore) : null,
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        league: true,
+      },
+    });
+
+    return successResponse(match, 'Match created successfully', 201);
+  } catch (error: any) {
+    return handleError(error, 'Failed to create match');
+  }
 }

@@ -1,82 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { cookies } from 'next/headers';
-
-// ✅ NODE RUNTIME - Required for Prisma and session validation
-export const runtime = 'nodejs';
-
-// ✅ NO caching for write operations
-export const dynamic = 'force-dynamic';
-
-// Prisma singleton for serverless (prevents connection exhaustion)
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
 /**
- * Verify user session from cookie
- * Returns user or null
+ * POST /api/predictions - Create or update prediction
+ * GET /api/predictions - Get user's predictions
+ *
+ * Node runtime required for Prisma
  */
-async function getUserFromSession() {
-  try {
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('session_token')?.value;
 
-    if (!sessionToken) {
-      return null;
-    }
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { verifyAuthentication, handleError } from '@/lib/middleware/auth';
 
-    const session = await prisma.session.findUnique({
-      where: { token: sessionToken },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            isActive: true
-          }
-        }
-      }
-    });
-
-    if (!session || session.expiresAt < new Date() || !session.user.isActive) {
-      return null;
-    }
-
-    return session.user;
-  } catch (error) {
-    console.error('Session verification error:', error);
-    return null;
-  }
-}
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/predictions
- *
  * Create or update a prediction
- * Body: { matchId, predictedHomeScore, predictedAwayScore }
- *
- * Security:
- * - Requires authentication
- * - Validates deadline (4 hours before kickoff)
- * - Validates match exists and not started
  */
 export async function POST(request: NextRequest) {
   try {
-    // ✅ Authentication
-    const user = await getUserFromSession();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized. Please log in.' },
-        { status: 401 }
-      );
+    // Verify authentication
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
 
     // ✅ Input validation
     const body = await request.json();
@@ -223,23 +170,16 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/predictions
- *
  * Get authenticated user's predictions
- * Query params:
- * - leagueId: Optional league filter
- * - limit: Number of results (default: 50)
- * - offset: Pagination offset (default: 0)
  */
 export async function GET(request: NextRequest) {
   try {
-    // ✅ Authentication
-    const user = await getUserFromSession();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Verify authentication
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
 
     const { searchParams } = new URL(request.url);
     const leagueId = searchParams.get('leagueId');
