@@ -26,6 +26,8 @@ export async function GET(
     const user = authResult.user;
     const { id } = await params;
 
+    console.log(`Fetching group with ID: ${id}`);
+
     const group = await prisma.group.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -51,9 +53,16 @@ export async function GET(
           orderBy: {
             totalPoints: 'desc'
           }
+        },
+        _count: {
+          select: {
+            members: true
+          }
         }
       }
     });
+
+    console.log(`Group query result:`, group ? `Found group: ${group.name}` : 'Group not found');
 
     if (!group) {
       return NextResponse.json(
