@@ -1,23 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
-
-// ✅ EDGE RUNTIME - Perfect for leaderboards (high traffic, read-only)
-export const runtime = 'edge';
-
-// ✅ Revalidate every 5 minutes (leaderboards change less frequently)
-export const revalidate = 300;
-
 /**
  * GET /api/leaderboard
  *
- * Query params:
- * - leagueId: Optional league filter
- * - limit: Number of users (default: 100, max: 500)
- *
- * Performance:
- * - Edge runtime: ~50-150ms (vs 2-5s with Express)
- * - Aggressive caching: 5-minute CDN cache
- * - Efficient SQL aggregation (no N+1 queries)
+ * Fetch global or league-specific leaderboard
+ * Node runtime required for Prisma
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { handleError } from '@/lib/middleware/auth';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/leaderboard
+ * Query params: leagueId (optional), limit (default: 100, max: 500)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -28,60 +25,86 @@ export async function GET(request: NextRequest) {
     let leaderboard;
 
     if (leagueId) {
-      // ✅ League-specific leaderboard using database function
-      // This avoids loading all predictions into memory
-      const { data, error } = await supabaseAdmin.rpc('get_league_leaderboard', {
-        p_league_id: parseInt(leagueId),
-        p_limit: limit
+      // League-specific leaderboard
+      const users = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          predictions: {
+            some: {
+              match: {
+                leagueId: parseInt(leagueId),
+              },
+            },
+          },
+        },
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          predictions: {
+            where: {
+              match: {
+                leagueId: parseInt(leagueId),
+              },
+              isProcessed: true,
+            },
+            select: {
+              totalPoints: true,
+            },
+          },
+        },
+        orderBy: {
+          totalPoints: 'desc',
+        },
+        take: limit,
       });
 
-      if (error) {
-        // Fallback if RPC function doesn't exist
-        console.warn('RPC function not found, using fallback query');
-
-        // Fallback: Raw SQL query
-        const { data: fallbackData, error: fallbackError } = await supabaseAdmin.rpc('execute_sql', {
-          query: `
-            SELECT
-              ROW_NUMBER() OVER (ORDER BY SUM(p."totalPoints") DESC) as rank,
-              u.id,
-              u.username,
-              u.avatar,
-              COALESCE(SUM(p."totalPoints"), 0) as "totalPoints",
-              COUNT(p.id) as "totalPredictions"
-            FROM "User" u
-            LEFT JOIN "Prediction" p ON u.id = p."userId"
-            LEFT JOIN "Match" m ON p."matchId" = m.id
-            WHERE m."leagueId" = ${parseInt(leagueId)}
-            GROUP BY u.id, u.username, u.avatar
-            HAVING COUNT(p.id) > 0
-            ORDER BY "totalPoints" DESC
-            LIMIT ${limit}
-          `
-        });
-
-        if (fallbackError) throw fallbackError;
-        leaderboard = fallbackData;
-      } else {
-        leaderboard = data;
-      }
+      // Calculate league-specific points and add rank
+      leaderboard = users
+        .map((user) => {
+          const leaguePoints = user.predictions.reduce(
+            (sum, pred) => sum + (pred.totalPoints || 0),
+            0
+          );
+          return {
+            id: user.id,
+            username: user.username,
+            avatar: user.avatar,
+            totalPoints: leaguePoints,
+            totalPredictions: user.predictions.length,
+          };
+        })
+        .sort((a, b) => b.totalPoints - a.totalPoints)
+        .map((user, index) => ({
+          rank: index + 1,
+          ...user,
+        }));
     } else {
-      // ✅ Global leaderboard - Use pre-calculated User.totalPoints
-      // Much faster than aggregating predictions
-      const { data, error } = await supabaseAdmin
-        .from('User')
-        .select('id, username, avatar, totalPoints, totalPredictions')
-        .gt('totalPredictions', 0)
-        .eq('isActive', true)
-        .order('totalPoints', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
+      // Global leaderboard using pre-calculated totalPoints
+      const users = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          totalPredictions: {
+            gt: 0,
+          },
+        },
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          totalPoints: true,
+          totalPredictions: true,
+        },
+        orderBy: {
+          totalPoints: 'desc',
+        },
+        take: limit,
+      });
 
       // Add ranks
-      leaderboard = data?.map((user, index) => ({
+      leaderboard = users.map((user, index) => ({
         rank: index + 1,
-        ...user
+        ...user,
       }));
     }
 
@@ -92,27 +115,16 @@ export async function GET(request: NextRequest) {
         meta: {
           leagueId: leagueId ? parseInt(leagueId) : null,
           limit,
-          cached: true,
-          timestamp: new Date().toISOString(),
-          runtime: 'edge'
-        }
+        },
       },
       {
         status: 200,
         headers: {
-          // ✅ Very aggressive caching for leaderboards
-          // Most users don't need real-time leaderboard updates
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-          'CDN-Cache-Control': 'public, s-maxage=600',
-          'Vercel-CDN-Cache-Control': 'public, s-maxage=1800', // 30min on Vercel Edge
-        }
+        },
       }
     );
   } catch (error: any) {
-    console.error('Error fetching leaderboard:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return handleError(error, 'Failed to fetch leaderboard');
   }
 }
