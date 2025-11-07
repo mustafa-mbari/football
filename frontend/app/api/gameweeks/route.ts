@@ -1,81 +1,62 @@
 /**
- * GET /api/gameweeks
+ * GET /api/gameweeks - Get all gameweeks across all leagues
  *
- * Fetch gameweeks for a league
- * Edge runtime
+ * Query params:
+ * - leagueId (optional): Filter by specific league
+ * - isCurrent (optional): Filter by current gameweeks only
+ *
+ * Returns all gameweeks with league info and counts
+ * Node runtime required for Prisma
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/db/supabase';
+import { prisma } from '@/lib/db/prisma';
+import { handleError } from '@/lib/middleware/auth';
 
-export const runtime = 'edge';
-export const revalidate = 300; // 5 minutes
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
+/**
+ * GET /api/gameweeks
+ * Get gameweeks (all or filtered by leagueId)
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const leagueId = searchParams.get('leagueId');
     const isCurrent = searchParams.get('isCurrent');
 
-    if (!leagueId) {
-      return NextResponse.json(
-        { success: false, error: 'leagueId is required' },
-        { status: 400 }
-      );
-    }
+    // Build where clause
+    const where: any = {};
+    if (leagueId) where.leagueId = parseInt(leagueId);
+    if (isCurrent === 'true') where.isCurrent = true;
 
-    let query = supabaseAdmin
-      .from('GameWeek')
-      .select(`
-        id,
-        weekNumber,
-        startDate,
-        endDate,
-        status,
-        isCurrent
-      `)
-      .eq('leagueId', parseInt(leagueId))
-      .order('weekNumber', { ascending: true });
-
-    // Filter by current if specified
-    if (isCurrent === 'true') {
-      query = query.eq('isCurrent', true);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        data,
-        meta: {
-          leagueId: parseInt(leagueId),
-          cached: true,
-          timestamp: new Date().toISOString(),
-          runtime: 'edge'
+    const gameWeeks = await prisma.gameWeek.findMany({
+      where,
+      include: {
+        league: {
+          select: { id: true, name: true, country: true, season: true, logoUrl: true }
+        },
+        _count: {
+          select: { matches: true, teamStats: true }
         }
       },
+      orderBy: [
+        { leagueId: 'asc' },
+        { weekNumber: 'asc' }
+      ]
+    });
+
+    return NextResponse.json(
+      { success: true, data: gameWeeks },
       {
         status: 200,
         headers: {
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-          'CDN-Cache-Control': 'public, s-maxage=600',
-        }
+        },
       }
     );
   } catch (error: any) {
-    console.error('Error fetching gameweeks:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return handleError(error, 'Failed to fetch gameweeks');
   }
 }
