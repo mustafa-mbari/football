@@ -150,72 +150,76 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    // Fetch all next scheduled matches at once to avoid connection pool exhaustion
+    const allNextMatches = await prisma.match.findMany({
+      where: {
+        leagueId: {
+          in: leagues.map((l) => l.id),
+        },
+        status: 'SCHEDULED',
+      },
+      orderBy: {
+        matchDate: 'asc',
+      },
+      select: {
+        id: true,
+        leagueId: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        matchDate: true,
+        homeTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+            primaryColor: true,
+          },
+        },
+        awayTeam: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            code: true,
+            logoUrl: true,
+            primaryColor: true,
+          },
+        },
+      },
+    });
+
     // Group standings by league and add next opponent
-    const standingsByLeague = await Promise.all(
-      leagues.map(async (league) => {
-        const leagueStandings = allStandings.filter((s) => s.leagueId === league.id);
+    const standingsByLeague = leagues.map((league) => {
+      const leagueStandings = allStandings.filter((s) => s.leagueId === league.id);
 
-        const standingsWithNext = await Promise.all(
-          leagueStandings.map(async (standing, index) => {
-            // Find next scheduled match for this team
-            const nextMatch = await prisma.match.findFirst({
-              where: {
-                leagueId: league.id,
-                status: 'SCHEDULED',
-                OR: [
-                  { homeTeamId: standing.teamId },
-                  { awayTeamId: standing.teamId },
-                ],
-              },
-              orderBy: {
-                matchDate: 'asc',
-              },
-              select: {
-                homeTeamId: true,
-                awayTeamId: true,
-                homeTeam: {
-                  select: {
-                    id: true,
-                    name: true,
-                    shortName: true,
-                    code: true,
-                    logoUrl: true,
-                    primaryColor: true,
-                  },
-                },
-                awayTeam: {
-                  select: {
-                    id: true,
-                    name: true,
-                    shortName: true,
-                    code: true,
-                    logoUrl: true,
-                    primaryColor: true,
-                  },
-                },
-              },
-            });
-
-            const nextOpponent = nextMatch
-              ? nextMatch.homeTeamId === standing.teamId
-                ? nextMatch.awayTeam
-                : nextMatch.homeTeam
-              : null;
-
-            return {
-              ...standing,
-              position: index + 1,
-              nextOpponent,
-            };
-          })
+      const standingsWithNext = leagueStandings.map((standing, index) => {
+        // Find next scheduled match for this team from the pre-fetched matches
+        const nextMatch = allNextMatches.find(
+          (match) =>
+            match.leagueId === league.id &&
+            (match.homeTeamId === standing.teamId || match.awayTeamId === standing.teamId)
         );
 
+        const nextOpponent = nextMatch
+          ? nextMatch.homeTeamId === standing.teamId
+            ? nextMatch.awayTeam
+            : nextMatch.homeTeam
+          : null;
+
         return {
-          league,
-          standings: standingsWithNext,
+          ...standing,
+          position: index + 1,
+          nextOpponent,
         };
-      })
-    );
+      });
+
+      return {
+        league,
+        standings: standingsWithNext,
+      };
+    });
 
     return NextResponse.json(
       {
