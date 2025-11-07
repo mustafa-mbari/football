@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/session';
+import { verifyAuthentication, handleError, successResponse, errorResponse } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,15 +19,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    const { id } = await params;
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
+    const { id } = await params;
 
     const group = await prisma.group.findUnique({
       where: { id: parseInt(id) },
@@ -101,15 +98,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    const { id } = await params;
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
+    const { id } = await params;
 
     const body = await request.json();
     const { name, description, maxMembers } = body;
@@ -179,15 +173,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    const { id } = await params;
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
+    const { id } = await params;
 
     const group = await prisma.group.findUnique({
       where: { id: parseInt(id) }

@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/session';
+import { verifyAuthentication, handleError, successResponse, errorResponse } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,14 +15,11 @@ export const dynamic = 'force-dynamic';
 // GET - List user's groups
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
 
     const memberships = await prisma.groupMember.findMany({
       where: { userId: user.id },
@@ -92,14 +89,11 @@ export async function GET(request: NextRequest) {
 // POST - Create new group
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await verifyAuthentication();
+    if ('error' in authResult) {
+      return authResult.error;
     }
+    const user = authResult.user;
 
     const body = await request.json();
     const { name, description, leagueId, allowedTeamIds, joinCode } = body;
