@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+          // No caching for admin pages - always fetch fresh data
+          'Cache-Control': 'no-store, no-cache, must-revalidate, private',
         },
       }
     );

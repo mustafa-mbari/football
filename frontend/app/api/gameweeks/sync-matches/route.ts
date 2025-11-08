@@ -23,6 +23,7 @@ import { verifyAdmin, handleError, errorResponse } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for complex sync operations
 
 /**
  * POST /api/gameweeks/sync-matches

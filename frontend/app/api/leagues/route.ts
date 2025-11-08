@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+          // No caching for admin requests (includeInactive), cache for public requests
+          'Cache-Control': includeInactive
+            ? 'no-store, no-cache, must-revalidate, private'
+            : 'public, s-maxage=300, stale-while-revalidate=600',
         },
       }
     );
