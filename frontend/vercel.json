@@ -5,7 +5,7 @@
   "regions": ["iad1"],
   "functions": {
     "app/api/**/*.ts": {
-      "maxDuration": 60,
+      "maxDuration": 30,
       "memory": 1024
     }
   },
@@ -45,9 +45,19 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    },
+    {
+      "source": "/_next/image(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000"
+        }
+      ]
     }
   ],
   "env": {
     "NEXT_PUBLIC_USE_NEXTJS_API": "true"
-  }
+  },
+  "crons": []
 }

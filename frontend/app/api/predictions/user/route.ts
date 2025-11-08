@@ -16,6 +16,7 @@ import { verifyAuthentication, handleError } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 30; // Revalidate every 30 seconds
 
 /**
  * GET /api/predictions/user

@@ -215,9 +215,14 @@ model Match {
   @@index([status])
   @@index([weekNumber])
   @@index([leagueId, status])
+  @@index([leagueId, status, matchDate])
+  @@index([leagueId, matchDate])
+  @@index([status, matchDate])
   @@index([status, homeScore, awayScore])
   @@index([homeTeamId, status])
   @@index([awayTeamId, status])
+  @@index([homeTeamId, status, matchDate])
+  @@index([awayTeamId, status, matchDate])
   @@unique([homeTeamId, awayTeamId, matchDate])
 }
 
@@ -283,6 +288,8 @@ model Table {
 
   @@unique([leagueId, teamId])
   @@index([leagueId, position])
+  @@index([leagueId, points(sort: Desc), goalDifference(sort: Desc)])
+  @@index([teamId, leagueId])
 }
 
 // ==================== GAMEWEEKS & WEEKLY TRACKING ====================

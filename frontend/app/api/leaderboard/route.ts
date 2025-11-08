@@ -11,6 +11,7 @@ import { handleError } from '@/lib/middleware/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 300; // Revalidate every 5 minutes
 
 /**
  * GET /api/leaderboard
