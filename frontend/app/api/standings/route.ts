@@ -12,6 +12,7 @@ import { prisma } from '@/lib/db/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 120; // Revalidate every 2 minutes
 
 export async function GET(request: NextRequest) {
   try {
