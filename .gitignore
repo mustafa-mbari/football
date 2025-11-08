@@ -19,6 +19,7 @@ backend/dist/
 .env.production.local
 backend/.env
 frontend/.env.local
+frontend/set-vercel-env.sh
 
 # Next.js
 frontend/.next/
